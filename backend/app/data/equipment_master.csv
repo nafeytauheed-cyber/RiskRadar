@@ -1,0 +1,15 @@
+equipment_id,name,type,location,install_date,criticality
+EQ-001,Pump A1,Pump,Plant A - Line 1,2019-07-14,High
+EQ-002,Compressor A2,Compressor,Plant A - Line 2,2020-05-19,Medium
+EQ-003,Motor A3,Motor,Plant B - Line 1,2019-08-26,Low
+EQ-004,Turbine A4,Turbine,Plant B - Line 3,2019-01-21,High
+EQ-005,Conveyor A5,Conveyor,Plant C - Utility,2021-01-19,Medium
+EQ-006,Pump B1,Pump,Plant A - Line 1,2020-08-02,Low
+EQ-007,Compressor B2,Compressor,Plant A - Line 2,2020-03-30,High
+EQ-008,Motor B3,Motor,Plant B - Line 1,2022-06-03,Medium
+EQ-009,Turbine B4,Turbine,Plant B - Line 3,2022-11-26,Low
+EQ-010,Conveyor B5,Conveyor,Plant C - Utility,2020-02-20,High
+EQ-011,Pump C1,Pump,Plant A - Line 1,2019-06-06,Medium
+EQ-012,Compressor C2,Compressor,Plant A - Line 2,2019-01-29,Low
+EQ-013,Motor C3,Motor,Plant B - Line 1,2022-12-17,High
+EQ-014,Turbine C4,Turbine,Plant B - Line 3,2022-07-21,Medium

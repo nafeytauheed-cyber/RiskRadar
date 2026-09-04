@@ -1,0 +1,47 @@
+equipment_id,date,type,notes
+EQ-001,2025-05-01,Lubrication,Routine lubrication performed.
+EQ-001,2025-05-02,Filter Replacement,Routine filter replacement performed.
+EQ-001,2025-05-12,Inspection,Routine inspection performed.
+EQ-002,2025-05-06,Inspection,Routine inspection performed.
+EQ-002,2025-05-11,Inspection,Routine inspection performed.
+EQ-003,2025-05-04,Lubrication,Routine lubrication performed.
+EQ-003,2025-05-12,Inspection,Routine inspection performed.
+EQ-003,2025-05-10,Lubrication,Routine lubrication performed.
+EQ-003,2025-05-11,Filter Replacement,Routine filter replacement performed.
+EQ-004,2025-05-09,Lubrication,Routine lubrication performed.
+EQ-004,2025-05-10,Calibration,Routine calibration performed.
+EQ-004,2025-05-10,Filter Replacement,Routine filter replacement performed.
+EQ-004,2025-05-01,Calibration,Routine calibration performed.
+EQ-005,2025-05-04,Calibration,Routine calibration performed.
+EQ-005,2025-05-14,Lubrication,Routine lubrication performed.
+EQ-006,2025-05-12,Calibration,Routine calibration performed.
+EQ-006,2025-05-01,Inspection,Routine inspection performed.
+EQ-006,2025-05-05,Inspection,Routine inspection performed.
+EQ-006,2025-05-03,Lubrication,Routine lubrication performed.
+EQ-007,2025-05-04,Lubrication,Routine lubrication performed.
+EQ-007,2025-05-10,Filter Replacement,Routine filter replacement performed.
+EQ-007,2025-05-12,Filter Replacement,Routine filter replacement performed.
+EQ-008,2025-05-08,Inspection,Routine inspection performed.
+EQ-008,2025-05-11,Calibration,Routine calibration performed.
+EQ-008,2025-05-04,Filter Replacement,Routine filter replacement performed.
+EQ-008,2025-05-15,Lubrication,Routine lubrication performed.
+EQ-009,2025-05-06,Calibration,Routine calibration performed.
+EQ-009,2025-05-08,Inspection,Routine inspection performed.
+EQ-009,2025-05-01,Calibration,Routine calibration performed.
+EQ-010,2025-05-05,Filter Replacement,Routine filter replacement performed.
+EQ-010,2025-05-04,Calibration,Routine calibration performed.
+EQ-010,2025-05-09,Inspection,Routine inspection performed.
+EQ-010,2025-05-06,Inspection,Routine inspection performed.
+EQ-011,2025-05-08,Calibration,Routine calibration performed.
+EQ-011,2025-05-06,Inspection,Routine inspection performed.
+EQ-011,2025-05-01,Lubrication,Routine lubrication performed.
+EQ-011,2025-05-01,Filter Replacement,Routine filter replacement performed.
+EQ-012,2025-05-01,Inspection,Routine inspection performed.
+EQ-012,2025-05-05,Filter Replacement,Routine filter replacement performed.
+EQ-012,2025-05-08,Lubrication,Routine lubrication performed.
+EQ-013,2025-05-11,Calibration,Routine calibration performed.
+EQ-013,2025-05-01,Lubrication,Routine lubrication performed.
+EQ-013,2025-05-09,Calibration,Routine calibration performed.
+EQ-014,2025-05-11,Calibration,Routine calibration performed.
+EQ-014,2025-05-05,Inspection,Routine inspection performed.
+EQ-014,2025-05-05,Inspection,Routine inspection performed.
