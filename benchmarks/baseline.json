@@ -1,0 +1,9 @@
+{
+  "commit": "4456e04df6e571e310f159bac8c9318804e66d7b",
+  "runtime_seconds": 15.014710460000003,
+  "equipment": 14,
+  "batch_score": 22.704519155025597,
+  "singleton_score": 0.0,
+  "earliest_full_feature": 64.82666666666667,
+  "earliest_prefix_feature": 0.0
+}

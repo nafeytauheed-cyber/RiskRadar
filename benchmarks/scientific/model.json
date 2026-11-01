@@ -1,0 +1,126 @@
+{
+  "format": "riskradar-logistic-v1",
+  "features": [
+    "temperature_mean",
+    "temperature_std",
+    "temperature_slope",
+    "vibration_mean",
+    "vibration_std",
+    "vibration_slope",
+    "pressure_mean",
+    "pressure_std",
+    "pressure_slope",
+    "current_mean",
+    "current_std",
+    "current_slope",
+    "rpm_mean",
+    "rpm_std",
+    "rpm_slope"
+  ],
+  "feature_version": "causal-v1",
+  "mean": [
+    66.52871220723814,
+    2.0481459322157454,
+    0.03769328496229913,
+    2.4645182922934485,
+    0.3021018590803782,
+    0.0065046074426356095,
+    99.82518162945956,
+    3.0028769129931288,
+    -0.006879255329959599,
+    40.97972731122179,
+    1.4832883545488569,
+    0.02203338414324328,
+    1500.3477864371375,
+    18.63059169933731,
+    0.011307771883828383
+  ],
+  "scale": [
+    4.563423737958091,
+    0.5159599295390624,
+    0.2559507835035625,
+    0.6405135040188918,
+    0.07501363074409527,
+    0.03715115009555862,
+    7.52124985545971,
+    0.7448951419084276,
+    0.3800186893235633,
+    3.2051873862931983,
+    0.36480188708541617,
+    0.1784290281486281,
+    8.250950289757858,
+    14.587864507992455,
+    2.9637026867850143
+  ],
+  "coef": [
+    1.0666299738979304,
+    0.3465909365136401,
+    0.11255732818993269,
+    0.9143165359186054,
+    -0.018874247541706017,
+    0.06932294571601828,
+    -1.0061210379147734,
+    0.28065264554024033,
+    -0.1562185411147475,
+    2.8533673465105696,
+    0.1133434274623665,
+    -0.02500516184182793,
+    -0.348260305651644,
+    -1.3726481285502061,
+    -0.09096767134164586
+  ],
+  "intercept": -3.980310455977366,
+  "calibration": {
+    "slope": 0.5033926719202615,
+    "intercept": 0.11108572453744216,
+    "version": "platt-v1"
+  },
+  "baseline": "training-only-standard-scaler",
+  "horizon": 30,
+  "provenance": {
+    "seed": 20261101,
+    "splits": {
+      "train": [
+        "HIST-009",
+        "HIST-023",
+        "HIST-022",
+        "HIST-003",
+        "HIST-017",
+        "HIST-020",
+        "HIST-001",
+        "HIST-015",
+        "HIST-010",
+        "HIST-014",
+        "HIST-019",
+        "HIST-002"
+      ],
+      "selection": [
+        "HIST-016",
+        "HIST-012",
+        "HIST-007"
+      ],
+      "calibration": [
+        "HIST-013",
+        "HIST-024",
+        "HIST-021",
+        "HIST-006"
+      ],
+      "test": [
+        "HIST-005",
+        "HIST-008",
+        "HIST-011",
+        "HIST-018",
+        "HIST-004"
+      ]
+    },
+    "data": {
+      "sensor_readings_history.csv": "18cd1435ee24a789d2b5a0991fd12a963b579b8566c1e178a7b36b1edc526928",
+      "maintenance_logs.csv": "f002d6c7472f11244e01cc732a2a6ed017dbf256abac86ce839f01aea618b3e4",
+      "failure_history.csv": "6ea7316227e520f1a9d9fe5c21b0d95d322c4d116091d0b8779071647a6940e1",
+      "equipment_master.csv": "51daf7e4700006019977f2f166c4f48a3e2b4843a5a22096a6fb41864b5aa5b3",
+      "sensor_readings.csv": "c0c91807409da11c35c5b97e51be7ee4971713bb776bfc24e6ec8c181d6de297"
+    },
+    "dataset": "repository synthetic; no external validation",
+    "selected_C": 0.1
+  }
+}
