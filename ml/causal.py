@@ -10,7 +10,7 @@ import math
 
 SENSORS = ('temperature', 'vibration', 'pressure', 'current', 'rpm')
 UNITS = dict(zip(SENSORS, ('degC', 'mm/s', 'kPa', 'A', 'rpm')))
-FEATURE_VERSION = 'causal-v1'
+FEATURE_VERSION = 'causal-v2'
 FEATURES = tuple(f'{s}_{stat}' for s in SENSORS for stat in ('mean', 'std', 'slope'))
 
 
@@ -26,7 +26,7 @@ class FeaturePolicy:
     max_age_seconds: int = 86400
 
 
-def snapshot(events, target, arrival_cutoff, policy=FeaturePolicy()):
+def snapshot(events, target, arrival_cutoff, policy=FeaturePolicy(), freshness_cutoff=None):
     """Only same lifecycle/session, <= observation AND arrival cutoffs.
 
     Session changes reset warmup. Null/bad samples may be filled for <=2 cycles;
@@ -36,7 +36,8 @@ def snapshot(events, target, arrival_cutoff, policy=FeaturePolicy()):
     rows = [e for e in events if all(e[k] == target[k] for k in
             ('equipment_id', 'lifecycle_id', 'session_id'))
             and e['cycle'] <= target['cycle'] and e['observed_at'] <= target['observed_at']
-            and e['received_at'] <= arrival_cutoff]
+            and e['received_at'] <= arrival_cutoff
+            and target['observed_at'] - e['observed_at'] <= policy.max_age_seconds]
     rows.sort(key=lambda e: (e['cycle'], e['observed_at'], e['sequence'], e['event_id']))
     rows = [e for e in rows if e['cycle'] > target['cycle'] - policy.window]
     values, filled, missing = [], False, False
@@ -68,13 +69,14 @@ def snapshot(events, target, arrival_cutoff, policy=FeaturePolicy()):
             values.extend((my, std, slope))
         else:
             values.extend((0., 0., 0.))  # unscorable placeholders; never healthy defaults
-    age = arrival_cutoff-target['observed_at']
+    freshness_cutoff = arrival_cutoff if freshness_cutoff is None else freshness_cutoff
+    age = freshness_cutoff-target['observed_at']
     quality = 'stale' if age > policy.max_age_seconds else ('missing' if missing else ('imputed' if filled else 'good'))
     if len(rows) < policy.min_samples and quality != 'stale':
         quality = 'warmup'
     result = {'feature_version': FEATURE_VERSION, 'features': values, 'quality_state': quality,
               'input_refs': [e['event_id'] for e in rows], 'observation_cutoff': target['observed_at'],
-              'arrival_cutoff': arrival_cutoff, 'feature_policy': policy.__dict__}
+              'arrival_cutoff': arrival_cutoff, 'freshness_cutoff': freshness_cutoff, 'feature_policy': policy.__dict__}
     result['sha256'] = digest(result)
     return result
 

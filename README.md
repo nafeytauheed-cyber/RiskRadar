@@ -14,7 +14,7 @@ docker compose run --rm admin migrate
 docker compose run --rm admin bootstrap --tenant demo --equipment degradation --lifecycle original
 docker compose run --rm admin register benchmarks/scientific/model.json
 # Copy the returned content hash into MODEL_ID:
-export MODEL_ID=73b6bac514fb3290239c21b452e926c4dce6ce70077dfaac96e62763af09f0fb
+export MODEL_ID=fc1b76d35765c55006eb007dc264fc4d9eeeb9d592e8a0589a1153dfb9e3ea26
 docker compose run --rm admin promote --tenant demo --model "$MODEL_ID"
 docker compose up -d api worker
 cd frontend

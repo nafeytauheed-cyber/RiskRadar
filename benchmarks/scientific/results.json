@@ -52,136 +52,178 @@
   },
   "selection": {
     "0.1": {
-      "precision": 0.7671232876712328,
-      "recall": 0.6222222222222222,
-      "pr_auc": 0.6769937063871088,
-      "brier": 0.05892718336785009,
-      "log_loss": 0.25065000536003185
+      "precision": 0.7101449275362319,
+      "recall": 0.5444444444444444,
+      "pr_auc": 0.7066928572034086,
+      "brier": 0.05726013534926293,
+      "log_loss": 0.21566617897827473
     },
     "1.0": {
-      "precision": 0.8285714285714286,
-      "recall": 0.6444444444444445,
-      "pr_auc": 0.6588026379015057,
-      "brier": 0.054507993621572826,
-      "log_loss": 0.4238981521395992
+      "precision": 0.7647058823529411,
+      "recall": 0.5777777777777777,
+      "pr_auc": 0.6995564321516963,
+      "brier": 0.05847599190454298,
+      "log_loss": 0.26573713192687853
     },
     "10.0": {
-      "precision": 0.8428571428571429,
-      "recall": 0.6555555555555556,
-      "pr_auc": 0.6596278530545744,
-      "brier": 0.053634972086883836,
-      "log_loss": 0.5094311690801836
+      "precision": 0.7571428571428571,
+      "recall": 0.5888888888888889,
+      "pr_auc": 0.6956297967426709,
+      "brier": 0.05856562483159437,
+      "log_loss": 0.280692341124978
     }
+  },
+  "abstention_coverage_error": [
+    {
+      "confidence_margin": 0,
+      "coverage": 1.0,
+      "classification_error": 0.07637231503579953
+    },
+    {
+      "confidence_margin": 0.1,
+      "coverage": 0.9673826571201273,
+      "classification_error": 0.05674342105263158
+    },
+    {
+      "confidence_margin": 0.2,
+      "coverage": 0.939538583929992,
+      "classification_error": 0.05080440304826418
+    },
+    {
+      "confidence_margin": 0.3,
+      "coverage": 0.9061256961018298,
+      "classification_error": 0.03687445127304653
+    },
+    {
+      "confidence_margin": 0.4,
+      "coverage": 0.7844073190135242,
+      "classification_error": 0.028397565922920892
+    }
+  ],
+  "incident_policy": {
+    "warning_events": 128,
+    "incident_opens": 4,
+    "reduction_fraction": 0.96875,
+    "opening_delay_cycles_vs_first_warning": [
+      1,
+      10,
+      1,
+      1
+    ],
+    "units_with_warning_but_no_incident": 0,
+    "false_incident_opens_per_1000_cycles": 1.591089896579157,
+    "assumption": "one unresolved incident per lifecycle; no simulated operator resolutions"
   },
   "test": {
     "logistic_calibrated": {
-      "precision": 0.7786885245901639,
-      "recall": 0.6333333333333333,
-      "pr_auc": 0.7190310909821389,
-      "brier": 0.0537155269600987,
-      "log_loss": 0.21727344565354292
+      "precision": 0.7109375,
+      "recall": 0.6066666666666667,
+      "pr_auc": 0.7085423261395866,
+      "brier": 0.05627520961915424,
+      "log_loss": 0.21449105723200715
     },
     "gradient_boosting_calibrated": {
-      "precision": 0.7669172932330827,
-      "recall": 0.68,
-      "pr_auc": 0.7650683949290639,
-      "brier": 0.049441808658420856,
-      "log_loss": 0.18574874650955445
+      "precision": 0.7841726618705036,
+      "recall": 0.7266666666666667,
+      "pr_auc": 0.8284671366169576,
+      "brier": 0.04394946890910865,
+      "log_loss": 0.16379073170734093
     },
     "isolation_forest": {
-      "precision": 0.5454545454545454,
+      "precision": 0.53125,
       "recall": 0.68,
-      "pr_auc": 0.6539720685888974
+      "pr_auc": 0.648321055191211
     },
     "training_z_threshold": {
-      "precision": 0.4014084507042254,
-      "recall": 0.76
+      "precision": 0.4344262295081967,
+      "recall": 0.7066666666666667
     }
   },
   "reliability": [
     {
       "lower": 0.0,
-      "n": 887,
-      "predicted": 0.05579568592052173,
-      "observed": 0.03269447576099211
+      "n": 946,
+      "predicted": 0.048106245704783786,
+      "observed": 0.02536997885835095
     },
     {
       "lower": 0.1,
-      "n": 186,
-      "predicted": 0.12639169534557834,
-      "observed": 0.005376344086021506
+      "n": 124,
+      "predicted": 0.1277370376717672,
+      "observed": 0.04032258064516129
     },
     {
       "lower": 0.2,
-      "n": 30,
-      "predicted": 0.24324250130377986,
-      "observed": 0.16666666666666666
+      "n": 23,
+      "predicted": 0.24701398133724287,
+      "observed": 0.34782608695652173
     },
     {
       "lower": 0.30000000000000004,
-      "n": 18,
-      "predicted": 0.33460958427812104,
-      "observed": 0.5555555555555556
+      "n": 17,
+      "predicted": 0.34500241379801483,
+      "observed": 0.35294117647058826
     },
     {
       "lower": 0.4,
-      "n": 14,
-      "predicted": 0.46192862052449407,
-      "observed": 0.7142857142857143
+      "n": 19,
+      "predicted": 0.4404574990220212,
+      "observed": 0.8421052631578947
     },
     {
       "lower": 0.5,
-      "n": 20,
-      "predicted": 0.5611141445336856,
-      "observed": 0.7
+      "n": 22,
+      "predicted": 0.5467614650440328,
+      "observed": 0.5
     },
     {
       "lower": 0.6000000000000001,
-      "n": 29,
-      "predicted": 0.6512578839821734,
-      "observed": 0.6896551724137931
+      "n": 18,
+      "predicted": 0.6562241594153474,
+      "observed": 0.8333333333333334
     },
     {
       "lower": 0.7000000000000001,
-      "n": 20,
-      "predicted": 0.7361168340240221,
-      "observed": 0.75
+      "n": 19,
+      "predicted": 0.7565129722494431,
+      "observed": 0.47368421052631576
     },
     {
       "lower": 0.8,
-      "n": 20,
-      "predicted": 0.8607531026038199,
-      "observed": 0.75
+      "n": 29,
+      "predicted": 0.8706199374290299,
+      "observed": 0.6896551724137931
     },
     {
       "lower": 0.9,
-      "n": 33,
-      "predicted": 0.9534219365728636,
-      "observed": 0.9393939393939394
+      "n": 40,
+      "predicted": 0.958617581263835,
+      "observed": 0.9
     }
   ],
   "equipment_bootstrap_brier_95pct": [
-    0.03568127353915401,
-    0.09006517375897773
+    0.03757717048735088,
+    0.08763024850415331
   ],
   "warning_lead_cycles": [
     30,
-    23,
-    30,
-    14
+    22,
+    28,
+    13
   ],
-  "false_alert_events_per_1000_operating_cycles": 21.479713603818613,
+  "false_alert_events_per_1000_operating_cycles": 29.4351630867144,
   "chronological_evaluation": "BLOCKED: repository histories all start together; no independent later cohort",
   "limitations": [
     "Synthetic-only; no real equipment validity claim",
     "Bootstrap is imprecise with a small number of test lifecycles",
     "No fault-identification accuracy claimed",
-    "Row-level alerts; incident hysteresis requires separate evaluation"
+    "Incident policy comparison assumes no operator resolutions within a lifecycle"
   ],
-  "runtime_seconds": 6.085926006000022,
+  "runtime_seconds": 5.436611846000005,
   "environment": {
     "python": "3.12.14",
     "platform": "Linux-6.18.57-x86_64-with-glibc2.39"
   },
-  "artifact_hash": "73b6bac514fb3290239c21b452e926c4dce6ce70077dfaac96e62763af09f0fb"
+  "artifact_hash": "fc1b76d35765c55006eb007dc264fc4d9eeeb9d592e8a0589a1153dfb9e3ea26",
+  "export_max_probability_error": 3.3306690738754696e-16
 }

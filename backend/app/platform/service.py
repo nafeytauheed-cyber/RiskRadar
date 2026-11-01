@@ -33,6 +33,10 @@ def ingest(tenant,event,limit=10000):
         if eq['lifecycle_id']!=event.lifecycle_id: raise Conflict('inactive lifecycle')
         collision=c.execute('SELECT 1 FROM events WHERE tenant_id=%s AND equipment_id=%s AND lifecycle_id=%s AND session_id=%s AND (sequence=%s OR cycle=%s)',(tenant,event.equipment_id,event.lifecycle_id,event.session_id,event.sequence,event.cycle)).fetchone()
         if collision: raise Conflict('sequence or cycle already assigned')
+        inconsistent=c.execute("""SELECT 1 FROM events WHERE tenant_id=%s AND equipment_id=%s AND lifecycle_id=%s AND session_id=%s AND
+          ((sequence<%s AND (cycle>=%s OR observed_at>%s)) OR (sequence>%s AND (cycle<=%s OR observed_at<%s))) LIMIT 1""",
+          (tenant,event.equipment_id,event.lifecycle_id,event.session_id,event.sequence,event.cycle,event.observed_at,event.sequence,event.cycle,event.observed_at)).fetchone()
+        if inconsistent: raise Conflict('sequence/cycle/clock order inconsistent within session')
         pending=c.execute("SELECT count(*) AS n FROM jobs WHERE tenant_id=%s AND status IN ('pending','leased')",(tenant,)).fetchone()['n']
         if pending>=limit: raise Overloaded('queue capacity reached')
         c.execute('INSERT INTO events(tenant_id,event_id,equipment_id,lifecycle_id,session_id,sequence,cycle,observed_at,schema_version,payload,payload_hash) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',(tenant,event.event_id,event.equipment_id,event.lifecycle_id,event.session_id,event.sequence,event.cycle,event.observed_at,1,Jsonb(payload),hashed))
@@ -43,7 +47,8 @@ def ingest(tenant,event,limit=10000):
 def claim(lease_seconds=30):
     with connect() as c:
         eq=c.execute("""SELECT e.* FROM equipment e WHERE (lease_until IS NULL OR lease_until<clock_timestamp())
-          AND EXISTS(SELECT 1 FROM jobs j WHERE j.tenant_id=e.tenant_id AND j.equipment_id=e.equipment_id AND j.status IN ('pending','leased'))
+          AND EXISTS(SELECT 1 FROM jobs j WHERE j.tenant_id=e.tenant_id AND j.equipment_id=e.equipment_id AND j.status IN ('pending','leased') AND j.available_at<=clock_timestamp()
+          AND NOT EXISTS(SELECT 1 FROM jobs older WHERE older.tenant_id=j.tenant_id AND older.equipment_id=j.equipment_id AND older.status IN ('pending','leased') AND older.job_id<j.job_id))
           ORDER BY e.tenant_id,e.equipment_id FOR UPDATE SKIP LOCKED LIMIT 1""").fetchone()
         if not eq: return None
         t,e=eq['tenant_id'],eq['equipment_id']
@@ -52,6 +57,7 @@ def claim(lease_seconds=30):
         if not j['ready']: return None
         if j['attempts']>=5:
             c.execute("UPDATE jobs SET status='dead',error='retry budget exhausted' WHERE job_id=%s",(j['job_id'],))
+            c.execute('UPDATE processing_state SET high_streak=0,low_streak=0,version=version+1 WHERE tenant_id=%s AND equipment_id=%s',(t,e))
             audit(c,t,'worker','job.dead',{'job_id':j['job_id']}); return None
         eq=c.execute("UPDATE equipment SET lease_token=lease_token+1,lease_until=clock_timestamp()+(%s * interval '1 second') WHERE tenant_id=%s AND equipment_id=%s RETURNING *",(lease_seconds,t,e)).fetchone()
         return c.execute("UPDATE jobs SET status='leased',attempts=attempts+1,token=%s,lease_until=%s WHERE job_id=%s RETURNING *",(eq['lease_token'],eq['lease_until'],j['job_id'])).fetchone()
@@ -125,6 +131,9 @@ def fail(job,error):
         eq=c.execute('SELECT * FROM equipment WHERE tenant_id=%s AND equipment_id=%s FOR UPDATE',(job['tenant_id'],job['equipment_id'])).fetchone()
         if eq['lease_token']!=job['token']: return
         c.execute("UPDATE jobs SET status=CASE WHEN attempts>=5 THEN 'dead' ELSE 'pending' END,error=%s,available_at=clock_timestamp()+(%s * interval '1 second'),lease_until=NULL WHERE job_id=%s AND status='leased' AND token=%s",(type(error).__name__,min(60,2**job['attempts']),job['job_id'],job['token']))
+        if job['attempts']>=5:
+            c.execute('UPDATE processing_state SET high_streak=0,low_streak=0,version=version+1 WHERE tenant_id=%s AND equipment_id=%s',(job['tenant_id'],job['equipment_id']))
+            audit(c,job['tenant_id'],'worker','job.dead',{'job_id':job['job_id']})
         c.execute('UPDATE equipment SET lease_until=NULL WHERE tenant_id=%s AND equipment_id=%s',(job['tenant_id'],job['equipment_id']))
 
 
@@ -138,3 +147,21 @@ def transition(tenant,incident_id,version,to_status,note,actor):
         c.execute('INSERT INTO incident_transitions(tenant_id,incident_id,from_status,to_status,note,actor) VALUES (%s,%s,%s,%s,%s,%s)',(tenant,incident_id,i['status'],to_status,note,actor))
         audit(c,tenant,actor,'incident.transition',{'incident_id':incident_id,'status':to_status})
     return {'version':version+1,'status':to_status}
+
+
+def record_outcome(tenant,equipment_id,lifecycle_id,cycle,kind,notes,new_lifecycle,actor):
+    """Maintenance is an explicit boundary, never inferred from a sensor dip."""
+    with connect() as c:
+        c.execute('SELECT tenant_id FROM tenants WHERE tenant_id=%s FOR UPDATE',(tenant,))
+        eq=c.execute('SELECT * FROM equipment WHERE tenant_id=%s AND equipment_id=%s FOR UPDATE',(tenant,equipment_id)).fetchone()
+        if not eq:raise KeyError('equipment')
+        if eq['lifecycle_id']!=lifecycle_id:raise Conflict('lifecycle mismatch')
+        if new_lifecycle:
+            if kind!='maintenance' or new_lifecycle==lifecycle_id:raise Conflict('new lifecycle requires maintenance')
+            pending=c.execute("SELECT 1 FROM jobs WHERE tenant_id=%s AND equipment_id=%s AND status IN ('pending','leased') LIMIT 1",(tenant,equipment_id)).fetchone()
+            if pending:raise Conflict('drain equipment jobs before maintenance boundary')
+            c.execute('UPDATE equipment SET lifecycle_id=%s,lease_token=lease_token+1,lease_until=NULL WHERE tenant_id=%s AND equipment_id=%s',(new_lifecycle,tenant,equipment_id))
+            c.execute('UPDATE processing_state SET latest_event_id=NULL,latest_cycle=NULL,lifecycle_id=%s,session_id=NULL,last_observed_at=NULL,high_streak=0,low_streak=0,version=version+1 WHERE tenant_id=%s AND equipment_id=%s',(new_lifecycle,tenant,equipment_id))
+        oid=c.execute('INSERT INTO maintenance_outcomes(tenant_id,equipment_id,lifecycle_id,cycle,kind,notes) VALUES (%s,%s,%s,%s,%s,%s) RETURNING outcome_id',(tenant,equipment_id,lifecycle_id,cycle,kind,notes)).fetchone()['outcome_id']
+        audit(c,tenant,actor,'outcome.recorded',{'outcome_id':oid,'new_lifecycle':new_lifecycle})
+    return {'outcome_id':oid,'lifecycle_id':new_lifecycle or lifecycle_id}

@@ -72,3 +72,18 @@ def test_replay_deterministic_and_isolated(events,artifact):
     assert all(x['snapshot']['features']==y['snapshot']['features'] for x,y in zip(r,corrected))
     assert all(x['snapshot']['input_refs']==y['snapshot']['input_refs'] for x,y in zip(r,corrected))
     assert corrected[0]['snapshot']['arrival_cutoff']==events[-1]['received_at']
+
+
+def test_idle_gap_requires_new_warmup(events):
+    changed=copy.deepcopy(events)
+    changed[-1]['observed_at']+=90000
+    changed[-1]['received_at']+=90000
+    assert snapshot(changed,changed[-1],changed[-1]['received_at'])['quality_state']=='warmup'
+
+
+def test_grouping_measures_delay():
+    from ml.policy_metrics import evaluate_policy
+    rows=[{'equipment_id':'x','cycle':i,'failure_cycle':8} for i in range(1,7)]
+    result=evaluate_policy(rows,[.1,.6,.7,.8,.2,.9])
+    assert result['warning_events']==4 and result['incident_opens']==1
+    assert result['opening_delay_cycles_vs_first_warning']==[1]

@@ -1,0 +1,455 @@
+{
+  "artifact_hash": "fc1b76d35765c55006eb007dc264fc4d9eeeb9d592e8a0589a1153dfb9e3ea26",
+  "seeds": [
+    9001,
+    9002,
+    9003
+  ],
+  "purpose": "mechanism stress, not independent industrial validation",
+  "chronological_cohort_start": 1893456000,
+  "results": {
+    "9001": {
+      "abrupt": {
+        "total": 89,
+        "abstained": 4,
+        "coverage": 0.9550561797752809,
+        "metrics": {
+          "precision": 1.0,
+          "recall": 0.3,
+          "pr_auc": 0.71146528775582,
+          "brier": 0.22553457380212755,
+          "log_loss": 0.8121390193332464
+        }
+      },
+      "bias": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.01511125616330258,
+          "log_loss": 0.1296465173013855
+        }
+      },
+      "degradation": {
+        "total": 89,
+        "abstained": 4,
+        "coverage": 0.9550561797752809,
+        "metrics": {
+          "precision": 1.0,
+          "recall": 0.7,
+          "pr_auc": 0.9999999999999999,
+          "brier": 0.0607435174213912,
+          "log_loss": 0.20606298091121303
+        }
+      },
+      "delayed": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0015277115179377803,
+          "log_loss": 0.03855231337996501
+        }
+      },
+      "duplicates": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0019322895293137211,
+          "log_loss": 0.043730567366016285
+        }
+      },
+      "healthy_load": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0018652323160510376,
+          "log_loss": 0.039314513876234664
+        }
+      },
+      "maintenance": {
+        "total": 39,
+        "abstained": 4,
+        "coverage": 0.8974358974358975,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0018020816301647393,
+          "log_loss": 0.0412355643192949
+        }
+      },
+      "missing": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0012239577013344542,
+          "log_loss": 0.034839753533966115
+        }
+      },
+      "restart": {
+        "total": 70,
+        "abstained": 8,
+        "coverage": 0.8857142857142857,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0016382593718716357,
+          "log_loss": 0.040362435210477804
+        }
+      },
+      "simultaneous": {
+        "total": 89,
+        "abstained": 4,
+        "coverage": 0.9550561797752809,
+        "metrics": {
+          "precision": 1.0,
+          "recall": 0.8,
+          "pr_auc": 0.9999999999999999,
+          "brier": 0.04221730606914765,
+          "log_loss": 0.15260352106128025
+        }
+      },
+      "stuck": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0013135152928170047,
+          "log_loss": 0.036287280714374676
+        }
+      },
+      "unknown": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.00023448491233240637,
+          "log_loss": 0.01443982205241369
+        }
+      }
+    },
+    "9002": {
+      "abrupt": {
+        "total": 89,
+        "abstained": 4,
+        "coverage": 0.9550561797752809,
+        "metrics": {
+          "precision": 1.0,
+          "recall": 0.3,
+          "pr_auc": 0.6677241253798444,
+          "brier": 0.22968495867167635,
+          "log_loss": 0.8596003048744687
+        }
+      },
+      "bias": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.011728248394085608,
+          "log_loss": 0.11116415181033644
+        }
+      },
+      "degradation": {
+        "total": 89,
+        "abstained": 4,
+        "coverage": 0.9550561797752809,
+        "metrics": {
+          "precision": 1.0,
+          "recall": 0.8333333333333334,
+          "pr_auc": 0.9999999999999999,
+          "brier": 0.04685905932320459,
+          "log_loss": 0.1795118159821859
+        }
+      },
+      "delayed": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0012432497458843776,
+          "log_loss": 0.03472576025600025
+        }
+      },
+      "duplicates": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.00104892369261154,
+          "log_loss": 0.03257846963008081
+        }
+      },
+      "healthy_load": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0015704667802434425,
+          "log_loss": 0.03746987028944487
+        }
+      },
+      "maintenance": {
+        "total": 39,
+        "abstained": 4,
+        "coverage": 0.8974358974358975,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0015290778193912287,
+          "log_loss": 0.03807930107771952
+        }
+      },
+      "missing": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0011790953626429838,
+          "log_loss": 0.03426719623370681
+        }
+      },
+      "restart": {
+        "total": 70,
+        "abstained": 8,
+        "coverage": 0.8857142857142857,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0011202189485368759,
+          "log_loss": 0.0334439387267018
+        }
+      },
+      "simultaneous": {
+        "total": 89,
+        "abstained": 4,
+        "coverage": 0.9550561797752809,
+        "metrics": {
+          "precision": 1.0,
+          "recall": 0.7333333333333333,
+          "pr_auc": 0.9989247311827957,
+          "brier": 0.05360035958592172,
+          "log_loss": 0.18144565577563504
+        }
+      },
+      "stuck": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0012794173941391067,
+          "log_loss": 0.035318703767906544
+        }
+      },
+      "unknown": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.00021207239290486657,
+          "log_loss": 0.013632215981133474
+        }
+      }
+    },
+    "9003": {
+      "abrupt": {
+        "total": 89,
+        "abstained": 4,
+        "coverage": 0.9550561797752809,
+        "metrics": {
+          "precision": 1.0,
+          "recall": 0.3,
+          "pr_auc": 0.5635841735023137,
+          "brier": 0.23020212331107526,
+          "log_loss": 0.8662393754167916
+        }
+      },
+      "bias": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.014852741193716237,
+          "log_loss": 0.12638508991931954
+        }
+      },
+      "degradation": {
+        "total": 89,
+        "abstained": 4,
+        "coverage": 0.9550561797752809,
+        "metrics": {
+          "precision": 1.0,
+          "recall": 0.8,
+          "pr_auc": 0.9999999999999999,
+          "brier": 0.0498741697130646,
+          "log_loss": 0.18392281932783183
+        }
+      },
+      "delayed": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0016025094127577243,
+          "log_loss": 0.03983315341300419
+        }
+      },
+      "duplicates": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0014284977245897627,
+          "log_loss": 0.0379536198570596
+        }
+      },
+      "healthy_load": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0016440800447542598,
+          "log_loss": 0.039077545910860934
+        }
+      },
+      "maintenance": {
+        "total": 39,
+        "abstained": 4,
+        "coverage": 0.8974358974358975,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0011975013832380525,
+          "log_loss": 0.03478257742387142
+        }
+      },
+      "missing": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0013734474610511502,
+          "log_loss": 0.03678945338659314
+        }
+      },
+      "restart": {
+        "total": 70,
+        "abstained": 8,
+        "coverage": 0.8857142857142857,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0015003901802773246,
+          "log_loss": 0.03822285448591753
+        }
+      },
+      "simultaneous": {
+        "total": 89,
+        "abstained": 4,
+        "coverage": 0.9550561797752809,
+        "metrics": {
+          "precision": 1.0,
+          "recall": 0.8,
+          "pr_auc": 0.9989247311827957,
+          "brier": 0.04585594333166019,
+          "log_loss": 0.1666719970593425
+        }
+      },
+      "stuck": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.0009574823201880753,
+          "log_loss": 0.029756872319769746
+        }
+      },
+      "unknown": {
+        "total": 70,
+        "abstained": 4,
+        "coverage": 0.9428571428571428,
+        "metrics": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "pr_auc": null,
+          "brier": 0.00031455170383662184,
+          "log_loss": 0.016036187249375684
+        }
+      }
+    }
+  },
+  "limitations": [
+    "Simulator is authored in this repository, not independently collected",
+    "All listed mechanisms are held out from model fitting; no tuning from these results",
+    "Fixed failure cycles are simulator outcomes, not clinical or engineering failure definitions"
+  ]
+}

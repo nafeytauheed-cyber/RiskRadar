@@ -1,7 +1,7 @@
 """Pinned replay: pure scoring, separate scope, no incident/outbox code path."""
 import argparse
 from psycopg.types.json import Jsonb
-from ml.causal import snapshot, digest
+from ml.causal import snapshot, digest, FEATURE_VERSION
 from ml.artifact import validate,score
 from .db import connect
 from .service import event_dict
@@ -15,7 +15,7 @@ def compute(events,artifacts,mode):
     results=[]
     for target in order:
         cutoff=target['received_at'] if mode=='arrival' else end
-        f=snapshot(events,target,cutoff)
+        f=snapshot(events,target,cutoff,freshness_cutoff=target['received_at'])
         for model_id,a in sorted(artifacts.items()):
             validate(a,model_id)
             results.append({'event_id':target['event_id'],'model_id':model_id,'snapshot':f,'output':dict(score(a,f),quality_state=f['quality_state'],horizon_cycles=a['horizon'],mode=mode)})
@@ -33,7 +33,7 @@ def run(tenant,models,mode):
             if not row: raise ValueError('missing model')
             artifacts[mid]=validate(row['artifact'],mid)
     events=[event_dict(r) for r in rows]
-    manifest={'mode':mode,'events':[{'event_id':r['event_id'],'hash':r['payload_hash'],'received_at':r['received_at'].isoformat()} for r in rows], 'models':sorted(artifacts),'feature_version':'causal-v1','tolerance':1e-12,'tenant_id':tenant,'replay_version':1}
+    manifest={'mode':mode,'events':[{'event_id':r['event_id'],'hash':r['payload_hash'],'received_at':r['received_at'].isoformat()} for r in rows], 'models':sorted(artifacts),'feature_version':FEATURE_VERSION,'tolerance':1e-12,'tenant_id':tenant,'replay_version':2}
     run_id='replay:'+digest(manifest)
     result=compute(events,artifacts,mode)
     with connect() as c:

@@ -16,3 +16,6 @@
 ## Scope and continuity
 - Decisions: serve logistic JSON first; keep complex models offline; no LLM/ForceModel dependency; preserve original components as disconnected legacy reference. Feature/inference phases share one worker process with a pure feature boundary, not two separately queued worker services yet.
 - Remaining: roadmap explicitly tracks unfinished requirements; do not infer completeness from the number of files or tables.
+
+## Verification progress
+The first GitHub CI run succeeded with PostgreSQL integration tests and a real load/duplicate experiment. Local PostgreSQL remains unavailable. Later changes require their own CI verification. Feature age semantics were tightened and explicitly versioned causal-v2 rather than silently changing a published feature version. A separate restart/backup/restore drill has been added and awaits execution.

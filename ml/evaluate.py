@@ -14,7 +14,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, brier_score_loss, log_loss, precision_score, recall_score
 from sklearn.preprocessing import StandardScaler
 from .causal import SENSORS, FEATURES, FEATURE_VERSION, snapshot, label, digest
-from .artifact import validate
+from .artifact import validate, score
+from .policy_metrics import evaluate_policy, selective_error
 
 
 def metrics(y, p):
@@ -97,7 +98,10 @@ def run(output):
         boot.append(brier_score_loss(y[ii],p[ii]))
     provenance={'seed':20261101,'splits':parts,'data':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in data_dir.glob('*.csv')},'dataset':'repository synthetic; no external validation','selected_C':best}
     artifact=validate({'format':'riskradar-logistic-v1','features':list(FEATURES),'feature_version':FEATURE_VERSION,'mean':scaler.mean_.tolist(),'scale':scaler.scale_.tolist(),'coef':m.coef_[0].tolist(),'intercept':float(m.intercept_[0]),'calibration':{'slope':float(calibrator.coef_[0,0]),'intercept':float(calibrator.intercept_[0]),'version':'platt-v1'},'baseline':'training-only-standard-scaler','horizon':30,'provenance':provenance})
-    result={'data_provenance':provenance,'coverage':coverage,'selection':selection,'test':{'logistic_calibrated':metrics(y,p),'gradient_boosting_calibrated':metrics(y,pg), 'isolation_forest':{'precision':float(precision_score(y,raw>=threshold,zero_division=0)),'recall':float(recall_score(y,raw>=threshold,zero_division=0)),'pr_auc':float(average_precision_score(y,raw))},'training_z_threshold':{'precision':float(precision_score(y,z>=zcut,zero_division=0)),'recall':float(recall_score(y,z>=zcut,zero_division=0))}},'reliability':reliability(y,p),'equipment_bootstrap_brier_95pct':np.quantile(boot,[.025,.975]).tolist(),'warning_lead_cycles':lead,'false_alert_events_per_1000_operating_cycles':false/exposure*1000,'chronological_evaluation':'BLOCKED: repository histories all start together; no independent later cohort','limitations':['Synthetic-only; no real equipment validity claim','Bootstrap is imprecise with a small number of test lifecycles','No fault-identification accuracy claimed','Row-level alerts; incident hysteresis requires separate evaluation'], 'runtime_seconds':time.perf_counter()-start,'environment':{'python':platform.python_version(),'platform':platform.platform()},'artifact_hash':digest(artifact)}
+    result={'data_provenance':provenance,'coverage':coverage,'selection':selection,'abstention_coverage_error':selective_error(y,p),'incident_policy':evaluate_policy(arrays['test'][2],p),'test':{'logistic_calibrated':metrics(y,p),'gradient_boosting_calibrated':metrics(y,pg), 'isolation_forest':{'precision':float(precision_score(y,raw>=threshold,zero_division=0)),'recall':float(recall_score(y,raw>=threshold,zero_division=0)),'pr_auc':float(average_precision_score(y,raw))},'training_z_threshold':{'precision':float(precision_score(y,z>=zcut,zero_division=0)),'recall':float(recall_score(y,z>=zcut,zero_division=0))}},'reliability':reliability(y,p),'equipment_bootstrap_brier_95pct':np.quantile(boot,[.025,.975]).tolist(),'warning_lead_cycles':lead,'false_alert_events_per_1000_operating_cycles':false/exposure*1000,'chronological_evaluation':'BLOCKED: repository histories all start together; no independent later cohort','limitations':['Synthetic-only; no real equipment validity claim','Bootstrap is imprecise with a small number of test lifecycles','No fault-identification accuracy claimed','Incident policy comparison assumes no operator resolutions within a lifecycle'], 'runtime_seconds':time.perf_counter()-start,'environment':{'python':platform.python_version(),'platform':platform.platform()},'artifact_hash':digest(artifact)}
+    exported=np.array([score(artifact,{'quality_state':'good','features':list(v)})['failure_probability'] for v in arrays['test'][0]])
+    if not np.allclose(exported,p,atol=1e-12,rtol=1e-12):raise AssertionError('exported serving model differs from offline probabilities')
+    result['export_max_probability_error']=float(abs(exported-p).max())
     (output/'model.json').write_text(json.dumps(artifact,indent=2)); (output/'results.json').write_text(json.dumps(result,indent=2))
     print(json.dumps(result,indent=2))
 

@@ -108,3 +108,66 @@ def test_incident_transition_outbox():
     transition('a',incident['incident_id'],3,'resolved','inspection completed','test')
     sent=[];assert deliver_once(lambda payload,key:sent.append(key));assert not deliver_once(lambda *_:None)
     assert len(sent)==1
+
+
+def test_maintenance_boundary_and_immutable_history():
+    import psycopg
+    from app.platform.service import record_outcome
+    ingest('a',event());job=claim();mid,r=prepare(job);finish(job,mid,r)
+    record_outcome('a','degradation','original',20,'maintenance','bearing replaced','repaired','operator')
+    with pytest.raises(Conflict):ingest('a',event(2))
+    fresh=event(2);fresh.lifecycle_id='repaired';ingest('a',fresh)
+    job=claim();mid,r=prepare(job);assert r[0][1]['quality_state']=='warmup';finish(job,mid,r)
+    with pytest.raises(psycopg.Error):
+        with connect() as c:c.execute('DELETE FROM events')
+    with pytest.raises(psycopg.Error):
+        with connect() as c:c.execute('UPDATE model_versions SET artifact=\'{}\'::jsonb')
+
+
+def test_retries_dead_letter_and_clock_order():
+    from app.platform.service import fail
+    e=event(2);ingest('a',e)
+    earlier=event(1);earlier.observed_at=e.observed_at.replace('+00:00','+00:00')
+    earlier.sequence=3
+    with pytest.raises(Conflict):ingest('a',earlier)
+    for _ in range(5):
+        j=claim();assert j
+        fail(j,RuntimeError('model unavailable'))
+        with connect() as c:c.execute('UPDATE jobs SET available_at=now()')
+    assert claim() is None
+    with connect() as c:assert c.execute('SELECT status FROM jobs').fetchone()['status']=='dead'
+
+
+def test_worker_process_death_and_restart():
+    import subprocess,sys,json
+    ingest('a',event())
+    script="from app.platform.service import claim; import json,os; print(json.dumps(claim(),default=str),flush=True); os._exit(17)"
+    child=subprocess.run([sys.executable,'-c',script],capture_output=True,text=True)
+    assert child.returncode==17
+    lost=json.loads(child.stdout)
+    with connect() as c:c.execute("UPDATE equipment SET lease_until=now()-interval '1 second'")
+    replacement=claim();assert replacement['token']>lost['token']
+    mid,r=prepare(replacement);finish(replacement,mid,r)
+    with connect() as c:assert c.execute('SELECT status FROM jobs').fetchone()['status']=='done'
+
+
+def test_database_outage_never_acknowledged(monkeypatch):
+    # A real refused PostgreSQL connection, not a mock successful transaction.
+    monkeypatch.setenv('DATABASE_URL','postgresql://localhost:1/unavailable?connect_timeout=1')
+    with TestClient(app,raise_server_exceptions=False) as client:
+        response=client.post('/api/events',json=event().model_dump(),headers={'Authorization':'Bearer '+'a'*40})
+        assert response.status_code==503
+
+
+def test_outbox_ambiguous_delivery_retries_same_key():
+    from psycopg.types.json import Jsonb
+    with connect() as c:c.execute("INSERT INTO outbox(tenant_id,dedupe_key,payload) VALUES ('a','test',%s)",(Jsonb({'id':1}),))
+    received=[]
+    def ambiguous(payload,key):
+        received.append(key)
+        raise TimeoutError('receiver succeeded but acknowledgment was lost')
+    deliver_once(ambiguous)
+    with connect() as c:c.execute('UPDATE outbox SET available_at=now()')
+    deliver_once(lambda payload,key:received.append(key))
+    assert len(received)==2 and len(set(received))==1
+    with connect() as c:assert c.execute('SELECT status FROM outbox').fetchone()['status']=='sent'

@@ -56,7 +56,7 @@ def health(): return {'status':'alive'}
 @app.get('/api/ready')
 def ready():
     with connect() as c:
-        c.execute('SELECT version FROM schema_migrations WHERE version=1').fetchone() or (_ for _ in ()).throw(HTTPException(503,'migrations required'))
+        c.execute('SELECT version FROM schema_migrations WHERE version=2').fetchone() or (_ for _ in ()).throw(HTTPException(503,'migrations required'))
     return {'status':'ready'}
 
 @app.post('/api/events',status_code=202)
@@ -113,3 +113,19 @@ def metrics(p=Depends(query_user)):
         queue=c.execute('SELECT status,count(*) AS count FROM jobs WHERE tenant_id=%s GROUP BY status',(p['tenant_id'],)).fetchall()
         outbox=c.execute('SELECT status,count(*) AS count FROM outbox WHERE tenant_id=%s GROUP BY status',(p['tenant_id'],)).fetchall()
     return {'jobs':queue,'outbox':outbox}
+
+class Outcome(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    lifecycle_id:str=Field(min_length=1,max_length=100)
+    cycle:int=Field(ge=0)
+    kind:str=Field(pattern='^(failure|inspection|maintenance|censored)$')
+    notes:str=Field(min_length=1,max_length=2000)
+    new_lifecycle:str|None=Field(default=None,min_length=1,max_length=100)
+
+@app.post('/api/equipment/{equipment_id}/outcomes')
+def outcome(equipment_id:str,body:Outcome,p=Depends(query_user)):
+    from .platform.service import record_outcome
+    if p['role'] not in ('operator','admin'):raise HTTPException(403,'operator required')
+    try:return record_outcome(p['tenant_id'],equipment_id,body.lifecycle_id,body.cycle,body.kind,body.notes,body.new_lifecycle,p['key_hash'][:12])
+    except KeyError:raise HTTPException(404,'equipment not found')
+    except Conflict as exc:raise HTTPException(409,str(exc))

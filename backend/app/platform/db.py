@@ -12,8 +12,9 @@ def migrate():
     with connect() as c:
         c.execute('SELECT pg_advisory_xact_lock(18440218)')
         exists=c.execute("SELECT to_regclass('schema_migrations') AS name").fetchone()['name']
-        if exists and c.execute('SELECT 1 FROM schema_migrations WHERE version=1').fetchone():
-            return
-        c.execute(Path('migrations/001_platform.sql').read_text())
+        versions={r['version'] for r in c.execute('SELECT version FROM schema_migrations').fetchall()} if exists else set()
+        for path in sorted(Path('migrations').glob('[0-9]*.sql')):
+            version=int(path.name.split('_')[0])
+            if version not in versions:c.execute(path.read_text())
 
 if __name__=='__main__': migrate()
