@@ -10,7 +10,7 @@ import psycopg
 from app.platform.db import connect
 from app.platform.admin import bootstrap,register,promote
 from app.platform.contracts import Event
-from app.platform.service import ingest,claim,prepare,finish
+from app.platform.service import ingest,claim,prepare_features,finish_features,prepared_inference,finish
 from ml.causal import UNITS
 
 
@@ -35,7 +35,9 @@ def run(container,output):
             time.sleep(.2)
     assert rejected,'outage was falsely acknowledged'
     job=claim();assert job and job['tenant_id']==tenant
-    m,r=prepare(job);finish(job,m,r)
+    m,r=prepare_features(job);finish_features(job,m,r)
+    job=claim(phase='inference');assert job
+    m,r=prepared_inference(job);finish(job,m,r)
     assert ingest(tenant,event)['duplicate']
     dump=subprocess.run(['docker','exec',container,'pg_dump','-U','riskradar','-d','riskradar_test','-Fc'],capture_output=True,check=True).stdout
     subprocess.run(['docker','exec',container,'createdb','-U','riskradar','restore_check'],capture_output=True,check=True)

@@ -19,3 +19,5 @@
 
 ## Verification progress
 The first GitHub CI run succeeded with PostgreSQL integration tests and a real load/duplicate experiment. Local PostgreSQL remains unavailable. Later changes require their own CI verification. Feature age semantics were tightened and explicitly versioned causal-v2 rather than silently changing a published feature version. A separate restart/backup/restore drill has been added and awaits execution.
+
+The initial shared-process feature/inference decision has been superseded by migration 003: separate workers now use a durable intermediate payload and preserve per-equipment ordering across phases. Tests and benchmarks were extended to cover the production stage handoff rather than only the synchronous adapter.

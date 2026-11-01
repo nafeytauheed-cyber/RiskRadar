@@ -10,7 +10,7 @@ from .service import event_dict
 def compute(events,artifacts,mode):
     if mode not in ('arrival','corrected'): raise ValueError('invalid replay mode')
     if not events: return []
-    order=sorted(events,key=lambda e:(e['received_at'],e['event_id'])) if mode=='arrival' else sorted(events,key=lambda e:(e['observed_at'],e['equipment_id'],e['session_id'],e['sequence'],e['event_id']))
+    order=sorted(events,key=lambda e:(e['received_at'],e.get('arrival_order',0),e['event_id'])) if mode=='arrival' else sorted(events,key=lambda e:(e['observed_at'],e['equipment_id'],e['session_id'],e['sequence'],e['event_id']))
     end=max(e['received_at'] for e in events)
     results=[]
     for target in order:
@@ -33,7 +33,7 @@ def run(tenant,models,mode):
             if not row: raise ValueError('missing model')
             artifacts[mid]=validate(row['artifact'],mid)
     events=[event_dict(r) for r in rows]
-    manifest={'mode':mode,'events':[{'event_id':r['event_id'],'hash':r['payload_hash'],'received_at':r['received_at'].isoformat()} for r in rows], 'models':sorted(artifacts),'feature_version':FEATURE_VERSION,'tolerance':1e-12,'tenant_id':tenant,'replay_version':2}
+    manifest={'mode':mode,'events':[{'event_id':r['event_id'],'arrival_order':r['id'],'hash':r['payload_hash'],'received_at':r['received_at'].isoformat()} for r in rows], 'models':sorted(artifacts),'feature_version':FEATURE_VERSION,'tolerance':1e-12,'tenant_id':tenant,'replay_version':2}
     run_id='replay:'+digest(manifest)
     result=compute(events,artifacts,mode)
     with connect() as c:

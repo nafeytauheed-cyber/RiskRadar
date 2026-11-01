@@ -10,7 +10,7 @@ import numpy as np
 from app.platform.admin import bootstrap,register,promote
 from app.platform.db import migrate,connect
 from app.platform.contracts import Event
-from app.platform.service import ingest,claim,prepare,finish
+from app.platform.service import ingest,claim,prepare_features,finish_features,prepared_inference,finish
 from ml.causal import UNITS
 
 
@@ -26,7 +26,11 @@ def run(n,output):
     while True:
         job=claim()
         if job is None:break
-        mid,results=prepare(job);finish(job,mid,results)
+        if job['phase']=='features':
+            mid,results=prepare_features(job);finish_features(job,mid,results)
+            assert finish_features(job,mid,results) is False
+            continue
+        mid,results=prepared_inference(job);finish(job,mid,results)
         assert finish(job,mid,results) is False  # commit/ack ambiguity
         processed+=1
     end=time.perf_counter()

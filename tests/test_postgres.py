@@ -85,7 +85,15 @@ def test_late_revisions_replay_and_rollback():
         before=c.execute('SELECT count(*) AS n FROM incidents').fetchone()['n']
         notifications=c.execute('SELECT count(*) AS n FROM outbox').fetchone()['n']
     rid=run('a',[mid],'arrival');assert run('a',[mid],'arrival')==rid
-    run('a',[mid],'corrected');promote('a',mid)
+    run('a',[mid],'corrected')
+    import copy
+    from ml.artifact import load
+    from ml.causal import digest
+    from psycopg.types.json import Jsonb
+    challenger=copy.deepcopy(load('benchmarks/scientific/model.json'));challenger['intercept']+=.1
+    other=digest(challenger)
+    with connect() as c:c.execute('INSERT INTO model_versions(model_id,artifact) VALUES (%s,%s)',(other,Jsonb(challenger)))
+    promote('a',other);promote('a',mid)
     with pytest.raises(ValueError):promote('a','invalid')
     with connect() as c:
         assert c.execute('SELECT count(*) AS n FROM incidents').fetchone()['n']==before
@@ -171,3 +179,36 @@ def test_outbox_ambiguous_delivery_retries_same_key():
     deliver_once(lambda payload,key:received.append(key))
     assert len(received)==2 and len(set(received))==1
     with connect() as c:assert c.execute('SELECT status FROM outbox').fetchone()['status']=='sent'
+
+
+def test_durable_feature_inference_stages_and_pinned_model():
+    from app.platform.service import prepare_features,finish_features,prepared_inference
+    ingest('a',event());ingest('a',event(2))
+    assert claim(phase='inference') is None
+    j=claim(phase='features');model,features=prepare_features(j)
+    assert finish_features(j,model,features)
+    assert not finish_features(j,model,features)
+    assert claim(phase='features') is None # cannot overtake earlier inference
+    j2=claim(phase='inference');assert j2['prepared']['model_id']==model
+    m,r=prepared_inference(j2);assert m==model;finish(j2,m,r)
+    assert claim(phase='features') is not None
+
+
+def test_worker_entrypoint_both_stages():
+    from app.platform.worker import once
+    ingest('a',event())
+    assert once('features');assert once('inference');assert not once()
+    with connect() as c:assert c.execute('SELECT status FROM jobs').fetchone()['status']=='done'
+
+
+def test_http_ingestion_and_device_scope():
+    with connect() as c:
+        c.execute("INSERT INTO api_keys(key_hash,tenant_id,role,equipment_id) VALUES (%s,'a','device','degradation')",(hashlib.sha256(b'device-key-for-test').hexdigest(),))
+    with TestClient(app) as client:
+        headers={'Authorization':'Bearer device-key-for-test'}
+        e=event().model_dump()
+        assert client.post('/api/events',json=e,headers=headers).status_code==202
+        assert client.post('/api/events',json=e,headers=headers).json()['duplicate']
+        e['equipment_id']='not-owned'
+        assert client.post('/api/events',json=e,headers=headers).status_code==403
+        assert client.get('/api/equipment',headers=headers).status_code==403

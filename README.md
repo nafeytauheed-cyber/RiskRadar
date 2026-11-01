@@ -4,7 +4,7 @@ Authenticated telemetry ingestion, causal feature snapshots, durable prediction 
 
 ## Local setup
 
-Python 3.12, Node 20 and Docker Compose. No cloud resources needed. The DB/API/worker memory limits total 2 GiB; frontend runs separately. These are configured limits, not a measured 8 GB laptop benchmark.
+Python 3.12, Node 20 and Docker Compose. No cloud resources needed. The DB/API/two-worker memory limits total 2.75 GiB; frontend runs separately. These are configured limits, not a measured 8 GB laptop benchmark.
 
 ```bash
 export POSTGRES_PASSWORD="$(python -c 'import secrets; print(secrets.token_hex(24))')"
@@ -16,7 +16,7 @@ docker compose run --rm admin register benchmarks/scientific/model.json
 # Copy the returned content hash into MODEL_ID:
 export MODEL_ID=fc1b76d35765c55006eb007dc264fc4d9eeeb9d592e8a0589a1153dfb9e3ea26
 docker compose run --rm admin promote --tenant demo --model "$MODEL_ID"
-docker compose up -d api worker
+docker compose up -d api feature-worker inference-worker
 cd frontend
 npm ci
 npm run dev -- --host 127.0.0.1

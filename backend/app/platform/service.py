@@ -44,12 +44,12 @@ def ingest(tenant,event,limit=10000):
     return {'event_id':event.event_id,'duplicate':False}
 
 
-def claim(lease_seconds=30):
+def claim(lease_seconds=30,phase=None):
     with connect() as c:
         eq=c.execute("""SELECT e.* FROM equipment e WHERE (lease_until IS NULL OR lease_until<clock_timestamp())
-          AND EXISTS(SELECT 1 FROM jobs j WHERE j.tenant_id=e.tenant_id AND j.equipment_id=e.equipment_id AND j.status IN ('pending','leased') AND j.available_at<=clock_timestamp()
+          AND EXISTS(SELECT 1 FROM jobs j WHERE j.tenant_id=e.tenant_id AND j.equipment_id=e.equipment_id AND j.status IN ('pending','leased') AND j.available_at<=clock_timestamp() AND (%s::text IS NULL OR j.phase=%s)
           AND NOT EXISTS(SELECT 1 FROM jobs older WHERE older.tenant_id=j.tenant_id AND older.equipment_id=j.equipment_id AND older.status IN ('pending','leased') AND older.job_id<j.job_id))
-          ORDER BY e.tenant_id,e.equipment_id FOR UPDATE SKIP LOCKED LIMIT 1""").fetchone()
+          ORDER BY e.tenant_id,e.equipment_id FOR UPDATE SKIP LOCKED LIMIT 1""",(phase,phase)).fetchone()
         if not eq: return None
         t,e=eq['tenant_id'],eq['equipment_id']
         # Never skip an earlier retry for this equipment.
@@ -64,10 +64,10 @@ def claim(lease_seconds=30):
 
 
 def event_dict(row):
-    return dict(row['payload'],observed_at=row['observed_at'].timestamp(),received_at=row['received_at'].timestamp())
+    return dict(row['payload'],arrival_order=row['id'],observed_at=row['observed_at'].timestamp(),received_at=row['received_at'].timestamp())
 
 
-def prepare(job):
+def prepare_features(job):
     with connect() as c:
         row=c.execute('SELECT * FROM events WHERE tenant_id=%s AND event_id=%s',(job['tenant_id'],job['event_id'])).fetchone()
         model=c.execute('SELECT m.* FROM tenants t JOIN model_versions m ON m.model_id=t.active_model WHERE t.tenant_id=%s',(job['tenant_id'],)).fetchone()
@@ -83,10 +83,45 @@ def prepare(job):
     results=[]
     for target in byid.values():
         f=snapshot([event_dict(r) for r in events],event_dict(target),row['received_at'].timestamp())
-        output=score(model['artifact'],f)
-        output.update({'quality_state':f['quality_state'],'horizon_cycles':model['artifact']['horizon'],'calibration':model['artifact']['calibration']['version'],'baseline':model['artifact']['baseline'],'policy':'hysteresis-v1','model_id':model['model_id'],'revision_reason':'original' if target['event_id']==row['event_id'] else 'late_observation'})
+        output=dict({'quality_state':f['quality_state'],'horizon_cycles':model['artifact']['horizon'],'calibration':model['artifact']['calibration']['version'],'baseline':model['artifact']['baseline'],'policy':'hysteresis-v1','model_id':model['model_id'],'revision_reason':'original' if target['event_id']==row['event_id'] else 'late_observation'})
         results.append((target,f,output))
     return model['model_id'],results
+
+
+def infer(model_id,results):
+    with connect() as c:
+        row=c.execute('SELECT artifact FROM model_versions WHERE model_id=%s',(model_id,)).fetchone()
+    if not row:raise ValueError('pinned model missing')
+    a=validate(row['artifact'],model_id)
+    return model_id,[(target,f,dict(metadata,**score(a,f))) for target,f,metadata in results]
+
+
+def prepare(job):
+    """Synchronous adapter for tests/benchmarks; production stages are durable."""
+    return infer(*prepare_features(job))
+
+
+def finish_features(job,model_id,results):
+    import json
+    with connect() as c:
+        eq=c.execute('SELECT *,lease_until>clock_timestamp() AS valid FROM equipment WHERE tenant_id=%s AND equipment_id=%s FOR UPDATE',(job['tenant_id'],job['equipment_id'])).fetchone()
+        j=c.execute('SELECT * FROM jobs WHERE job_id=%s FOR UPDATE',(job['job_id'],)).fetchone()
+        if j['phase']=='inference' or j['status']=='done':return False
+        if eq['lease_token']!=job['token'] or not eq['valid'] or j['token']!=job['token'] or j['status']!='leased':raise LostLease()
+        prepared=json.loads(json.dumps({'model_id':model_id,'results':results},default=lambda v:v.isoformat()))
+        c.execute("UPDATE jobs SET phase='inference',prepared=%s,status='pending',attempts=0,token=NULL,lease_until=NULL WHERE job_id=%s",(Jsonb(prepared),job['job_id']))
+        c.execute('UPDATE equipment SET lease_until=NULL WHERE tenant_id=%s AND equipment_id=%s',(job['tenant_id'],job['equipment_id']))
+        audit(c,job['tenant_id'],'feature-worker','features.committed',{'job_id':job['job_id'],'model_id':model_id})
+    return True
+
+
+def prepared_inference(job):
+    prepared=job['prepared']
+    if not prepared:raise ValueError('missing durable features')
+    results=prepared['results']
+    for target,_,_ in results:
+        for key in ('observed_at','received_at'):target[key]=datetime.fromisoformat(target[key])
+    return infer(prepared['model_id'],results)
 
 
 def finish(job,model_id,results):

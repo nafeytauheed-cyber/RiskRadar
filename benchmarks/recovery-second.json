@@ -1,0 +1,22 @@
+{
+  "database_stop_rejected_ingest": true,
+  "durable_pending_job_recovered": true,
+  "duplicate_after_restart": true,
+  "restored_table_counts": {
+    "events": 201,
+    "jobs": 201,
+    "predictions": 201,
+    "model_versions": 1,
+    "outbox": 1,
+    "audit_events": 209
+  },
+  "model_hashes_preserved": true,
+  "dump_bytes": 99894,
+  "duration_seconds": 1.0745233319999983,
+  "limitations": [
+    "single PostgreSQL instance on GitHub runner",
+    "no replication/failover or network partition drill"
+  ],
+  "source_run": "https://github.com/nafeytauheed-cyber/RiskRadar/actions/runs/41325496137",
+  "commit": "6e19d5d13a392ab87160c3a55624cdee4a0680ab"
+}

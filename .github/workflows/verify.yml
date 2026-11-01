@@ -31,11 +31,25 @@ jobs:
       - run: python -m ml.evaluate --output /tmp/reproduction
       - run: python -m benchmarks.load --events 200 --output benchmarks/postgres-load.json
       - run: python -m benchmarks.recovery --container "${{ job.services.postgres.id }}" --output benchmarks/recovery.json
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: npm ci && npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: Browser investigation walkthrough
+        env:
+          RISKRADAR_API_KEY: ui-demo-ephemeral-integration-key-123456789
+        run: |
+          python -m benchmarks.ui_fixture
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/riskradar-api.log 2>&1 &
+          cd frontend
+          npx playwright test
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: verification-evidence
-          path: benchmarks/
+          path: |
+            benchmarks/
+            frontend/test-results/
   frontend:
     runs-on: ubuntu-latest
     steps:

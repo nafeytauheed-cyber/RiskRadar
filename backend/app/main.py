@@ -56,7 +56,7 @@ def health(): return {'status':'alive'}
 @app.get('/api/ready')
 def ready():
     with connect() as c:
-        c.execute('SELECT version FROM schema_migrations WHERE version=2').fetchone() or (_ for _ in ()).throw(HTTPException(503,'migrations required'))
+        c.execute('SELECT version FROM schema_migrations WHERE version=3').fetchone() or (_ for _ in ()).throw(HTTPException(503,'migrations required'))
     return {'status':'ready'}
 
 @app.post('/api/events',status_code=202)

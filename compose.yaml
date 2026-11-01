@@ -28,9 +28,12 @@ services:
   api:
     <<: *app
     ports: ['127.0.0.1:8000:8000']
-  worker:
+  feature-worker:
     <<: *app
-    command: ['python', '-m', 'app.platform.worker']
+    command: ['python', '-m', 'app.platform.worker', '--phase', 'features']
+  inference-worker:
+    <<: *app
+    command: ['python', '-m', 'app.platform.worker', '--phase', 'inference']
   admin:
     <<: *app
     profiles: [tools]

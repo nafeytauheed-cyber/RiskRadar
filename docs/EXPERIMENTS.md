@@ -18,3 +18,9 @@ Full observed outputs, seeds, split manifests, CSV hashes, environment and runti
 
 ## Additional evaluation
 `python -m ml.stress` writes seeded held-out-mechanism stress measurements to benchmarks/stress.json. This uses later synthetic timestamps and a distinct generator; it is NOT independent real-world chronological validation. The final model now uses causal-v2, with a maximum history age as well as maximum fill age. Re-evaluation records its changed hash. Exported runtime probabilities are checked against sklearn probabilities at 1e-12 tolerance. Results also include selective-error/coverage and incident grouping reduction/delay under a no-operator-resolution assumption.
+
+## Second remote verification (6e19d5d)
+[CI run 41325496137](https://github.com/nafeytauheed-cyber/RiskRadar/actions/runs/41325496137): 35 passed including 12 PostgreSQL integration tests, frontend build passed, load and restart/restore drills passed. `benchmarks/postgres-second.json` and `benchmarks/recovery-second.json` preserve exact outputs. The stop/restart drill rejected ingestion during outage and recovered the pending job; backup restore matched event/job/prediction/model/outbox/audit table counts and model hashes. It does not establish multi-node failover safety.
+
+## Reliability diagram
+`python -m ml.plot_reliability` (requires matplotlib) renders `benchmarks/scientific/reliability.svg` from observed bins, shown with sample counts. Calibration is fitted independently but reliability remains uneven, especially in sparsely populated high-probability bins. Do not describe the probabilities as industrially validated.
