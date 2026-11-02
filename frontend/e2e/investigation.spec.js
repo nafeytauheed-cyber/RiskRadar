@@ -7,9 +7,10 @@ test('authenticated investigation exposes quality, provenance and isolated repla
   await expect(equipment).toBeVisible();
   await equipment.click();
   await expect(page.getByRole('heading',{name:'Predictions and append-only revisions'})).toBeVisible();
-  await page.locator('summary').filter({hasText:'Provenance / alternatives'}).first().click();
-  await expect(page.locator('pre').first()).toContainText('input_refs');
-  await expect(page.locator('pre').first()).toContainText('causal-v2');
+  const provenance = page.locator('details').filter({hasText:'Provenance / alternatives'}).first();
+  await provenance.locator('summary').click();
+  await expect(provenance.locator('pre')).toContainText('input_refs');
+  await expect(provenance.locator('pre')).toContainText('causal-v2');
   await page.getByRole('button',{name:/^arrival/}).click();
   await expect(page.getByRole('columnheader',{name:'Identical input hash'})).toBeVisible();
   await page.getByRole('button',{name:/^corrected/}).click();

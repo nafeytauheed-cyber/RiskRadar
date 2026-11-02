@@ -259,3 +259,19 @@ def test_late_revision_keeps_original_model_after_promotion():
     with connect() as c:
         revisions=c.execute('SELECT model_id FROM predictions WHERE revision>0').fetchall()
         assert revisions and all(x['model_id']==original for x in revisions)
+
+
+def test_reopening_requires_two_new_high_observations():
+    def high(i):
+        ingest('a',event(i));j=claim();mid,r=prepare(j)
+        for _,_,o in r:o['failure_probability']=.9
+        finish(j,mid,r)
+    high(1);high(2)
+    with connect() as c:iid=c.execute('SELECT incident_id FROM incidents').fetchone()['incident_id']
+    transition('a',iid,1,'acknowledged','ack','operator')
+    transition('a',iid,2,'investigating','inspect','operator')
+    transition('a',iid,3,'resolved','fixed','operator')
+    high(3)
+    with connect() as c:assert c.execute('SELECT count(*) AS n FROM incidents').fetchone()['n']==1
+    high(4)
+    with connect() as c:assert c.execute('SELECT count(*) AS n FROM incidents').fetchone()['n']==2

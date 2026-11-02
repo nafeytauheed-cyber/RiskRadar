@@ -191,11 +191,16 @@ def fail(job,error):
 def transition(tenant,incident_id,version,to_status,note,actor):
     allowed={'open':{'acknowledged'},'acknowledged':{'investigating'},'investigating':{'resolved'},'resolved':set()}
     with connect() as c:
+        identity=c.execute('SELECT equipment_id FROM incidents WHERE tenant_id=%s AND incident_id=%s',(tenant,incident_id)).fetchone()
+        if not identity:raise KeyError('incident')
+        c.execute('SELECT 1 FROM equipment WHERE tenant_id=%s AND equipment_id=%s FOR UPDATE',(tenant,identity['equipment_id']))
         i=c.execute('SELECT * FROM incidents WHERE tenant_id=%s AND incident_id=%s FOR UPDATE',(tenant,incident_id)).fetchone()
         if not i: raise KeyError('incident')
         if i['version']!=version or to_status not in allowed[i['status']]: raise Conflict('stale version or invalid transition')
         c.execute('UPDATE incidents SET status=%s,version=version+1 WHERE incident_id=%s',(to_status,incident_id))
         c.execute('INSERT INTO incident_transitions(tenant_id,incident_id,from_status,to_status,note,actor) VALUES (%s,%s,%s,%s,%s,%s)',(tenant,incident_id,i['status'],to_status,note,actor))
+        if to_status=='resolved':
+            c.execute('UPDATE processing_state SET high_streak=0,low_streak=0,version=version+1 WHERE tenant_id=%s AND equipment_id=%s',(tenant,i['equipment_id']))
         audit(c,tenant,actor,'incident.transition',{'incident_id':incident_id,'status':to_status})
     return {'version':version+1,'status':to_status}
 
