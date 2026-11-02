@@ -10,9 +10,9 @@ from simulator.generate import generate
 
 
 def run(path,output):
-    a=load(path);report={'artifact_hash':digest(a),'seeds':[9001,9002,9003],'purpose':'mechanism stress, not independent industrial validation','chronological_cohort_start':1893456000,'results':{},'limitations':['Simulator is authored in this repository, not independently collected','All listed mechanisms are held out from model fitting; no tuning from these results','Fixed failure cycles are simulator outcomes, not clinical or engineering failure definitions']}
-    for seed in report['seeds']:
-        events,truth=generate(seed=seed,start=1893456000.)
+    a=load(path);report={'artifact_hash':digest(a),'seeds':[9001,9002,9003],'held_out_severity':[.6,1.0,1.6],'purpose':'mechanism stress, not independent industrial validation','chronological_cohort_start':1893456000,'results':{},'limitations':['Simulator is authored in this repository, not independently collected','All listed mechanisms are held out from model fitting; no tuning from these results','Fixed failure cycles are simulator outcomes, not clinical or engineering failure definitions']}
+    for seed,severity in zip(report['seeds'],report['held_out_severity']):
+        events,truth=generate(seed=seed,start=1893456000.,severity=severity)
         outcomes={r['equipment_id']:r for r in truth};seen={};byeq={}
         for e in events:
             if e['event_id'] in seen:continue

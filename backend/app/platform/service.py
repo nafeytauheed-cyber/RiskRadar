@@ -23,7 +23,7 @@ def ingest(tenant,event,limit=10000):
     payload=event.model_dump(); hashed=digest(payload)
     with connect() as c:
         # A tenant queue bound must serialize admissions across equipment.
-        c.execute('SELECT tenant_id FROM tenants WHERE tenant_id=%s FOR UPDATE',(tenant,))
+        c.execute('SELECT tenant_id FROM tenants WHERE tenant_id=%s FOR NO KEY UPDATE',(tenant,))
         eq=c.execute('SELECT * FROM equipment WHERE tenant_id=%s AND equipment_id=%s FOR UPDATE',(tenant,event.equipment_id)).fetchone()
         if not eq: raise KeyError('equipment')
         existing=c.execute('SELECT payload_hash FROM events WHERE tenant_id=%s AND event_id=%s',(tenant,event.event_id)).fetchone()
@@ -73,27 +73,42 @@ def prepare_features(job):
         model=c.execute('SELECT m.* FROM tenants t JOIN model_versions m ON m.model_id=t.active_model WHERE t.tenant_id=%s',(job['tenant_id'],)).fetchone()
         if not model: raise ValueError('no promoted model')
         validate(model['artifact'],model['model_id'])
-        events=c.execute('SELECT * FROM events WHERE tenant_id=%s AND equipment_id=%s AND received_at<=%s ORDER BY id',(job['tenant_id'],job['equipment_id'],row['received_at'])).fetchall()
+        events=c.execute('SELECT * FROM events WHERE tenant_id=%s AND equipment_id=%s AND lifecycle_id=%s AND session_id=%s AND cycle>%s AND cycle<%s AND received_at<=%s ORDER BY id',(job['tenant_id'],job['equipment_id'],row['lifecycle_id'],row['session_id'],row['cycle']-10,row['cycle']+10,row['received_at'])).fetchall()
         # Late data revises already processed affected targets, without deleting originals.
-        targets=c.execute("""SELECT DISTINCT e.* FROM events e JOIN predictions p ON p.tenant_id=e.tenant_id AND p.event_id=e.event_id
+        targets=c.execute("""SELECT DISTINCT ON(e.event_id) e.*,p.model_id AS original_model_id FROM events e JOIN predictions p ON p.tenant_id=e.tenant_id AND p.event_id=e.event_id
           WHERE e.tenant_id=%s AND e.equipment_id=%s AND p.scope='live' AND e.lifecycle_id=%s AND e.session_id=%s
-          AND e.cycle>=%s AND e.cycle<%s AND e.observed_at>=%s AND e.received_at<=%s""",
+          AND e.cycle>=%s AND e.cycle<%s AND e.observed_at>=%s AND e.received_at<=%s ORDER BY e.event_id,p.prediction_id""",
           (job['tenant_id'],job['equipment_id'],row['lifecycle_id'],row['session_id'],row['cycle'],row['cycle']+10,row['observed_at'],row['received_at'])).fetchall()
+        artifacts={model['model_id']:model['artifact']}
+        for target in targets:
+            mid=target['original_model_id']
+            if mid not in artifacts:
+                artifacts[mid]=c.execute('SELECT artifact FROM model_versions WHERE model_id=%s',(mid,)).fetchone()['artifact']
     byid={r['event_id']:r for r in [row]+targets}
     results=[]
     for target in byid.values():
         f=snapshot([event_dict(r) for r in events],event_dict(target),row['received_at'].timestamp())
-        output=dict({'quality_state':f['quality_state'],'horizon_cycles':model['artifact']['horizon'],'calibration':model['artifact']['calibration']['version'],'baseline':model['artifact']['baseline'],'policy':'hysteresis-v1','model_id':model['model_id'],'revision_reason':'original' if target['event_id']==row['event_id'] else 'late_observation'})
+        pinned=target.get('original_model_id',model['model_id'])
+        artifact=validate(artifacts[pinned],pinned)
+        output=dict({'quality_state':f['quality_state'],'horizon_cycles':artifact['horizon'],'calibration':artifact['calibration']['version'],'baseline':artifact['baseline'],'policy':'hysteresis-v1','model_id':pinned,'revision_reason':'original' if target['event_id']==row['event_id'] else 'late_observation'})
         results.append((target,f,output))
     return model['model_id'],results
 
 
 def infer(model_id,results):
+    artifacts={}
     with connect() as c:
-        row=c.execute('SELECT artifact FROM model_versions WHERE model_id=%s',(model_id,)).fetchone()
-    if not row:raise ValueError('pinned model missing')
-    a=validate(row['artifact'],model_id)
-    return model_id,[(target,f,dict(metadata,**score(a,f))) for target,f,metadata in results]
+        for mid in {metadata['model_id'] for _,_,metadata in results}:
+            row=c.execute('SELECT artifact FROM model_versions WHERE model_id=%s',(mid,)).fetchone()
+            if not row:raise ValueError('pinned model missing')
+            artifacts[mid]=validate(row['artifact'],mid)
+    scored=[]
+    for target,f,metadata in results:
+        a=artifacts[metadata['model_id']]
+        if f['feature_version']!=a['feature_version'] or digest({k:v for k,v in f.items() if k!='sha256'})!=f['sha256']:
+            raise ValueError('feature snapshot integrity mismatch')
+        scored.append((target,f,dict(metadata,**score(a,f))))
+    return model_id,scored
 
 
 def prepare(job):
@@ -118,7 +133,8 @@ def finish_features(job,model_id,results):
 def prepared_inference(job):
     prepared=job['prepared']
     if not prepared:raise ValueError('missing durable features')
-    results=prepared['results']
+    import copy
+    results=copy.deepcopy(prepared['results'])
     for target,_,_ in results:
         for key in ('observed_at','received_at'):target[key]=datetime.fromisoformat(target[key])
     return infer(prepared['model_id'],results)
@@ -131,10 +147,10 @@ def finish(job,model_id,results):
         if j['status']=='done': return False # crash after commit: no duplicate effects
         if eq['lease_token']!=job['token'] or not eq['valid'] or j['token']!=job['token'] or j['status']!='leased': raise LostLease()
         for target,f,output in results:
-            tenant=job['tenant_id']; eid=target['event_id']
+            tenant=job['tenant_id']; eid=target['event_id']; target_model=output['model_id']
             c.execute('INSERT INTO feature_snapshots(tenant_id,snapshot_id,content) VALUES (%s,%s,%s) ON CONFLICT DO NOTHING',(tenant,f['sha256'],Jsonb(f)))
-            rev=c.execute("SELECT coalesce(max(revision),-1)+1 AS n FROM predictions WHERE tenant_id=%s AND event_id=%s AND scope='live' AND model_id=%s",(tenant,eid,model_id)).fetchone()['n']
-            p=c.execute('INSERT INTO predictions(tenant_id,event_id,revision,model_id,snapshot_id,output) VALUES (%s,%s,%s,%s,%s,%s) RETURNING prediction_id',(tenant,eid,rev,model_id,f['sha256'],Jsonb(output))).fetchone()['prediction_id']
+            rev=c.execute("SELECT coalesce(max(revision),-1)+1 AS n FROM predictions WHERE tenant_id=%s AND event_id=%s AND scope='live' AND model_id=%s",(tenant,eid,target_model)).fetchone()['n']
+            p=c.execute('INSERT INTO predictions(tenant_id,event_id,revision,model_id,snapshot_id,output) VALUES (%s,%s,%s,%s,%s,%s) RETURNING prediction_id',(tenant,eid,rev,target_model,f['sha256'],Jsonb(output))).fetchone()['prediction_id']
             c.execute('INSERT INTO evidence(evidence_id,tenant_id,prediction_id,content) VALUES (%s,%s,%s,%s)',(f'prediction:{p}',tenant,p,Jsonb({'input_refs':f['input_refs'],'kind':'model_evidence','causal_claim':False})))
             if output['revision_reason']=='original':
                 update_incident(c,job,target,output,p)
@@ -187,7 +203,7 @@ def transition(tenant,incident_id,version,to_status,note,actor):
 def record_outcome(tenant,equipment_id,lifecycle_id,cycle,kind,notes,new_lifecycle,actor):
     """Maintenance is an explicit boundary, never inferred from a sensor dip."""
     with connect() as c:
-        c.execute('SELECT tenant_id FROM tenants WHERE tenant_id=%s FOR UPDATE',(tenant,))
+        c.execute('SELECT tenant_id FROM tenants WHERE tenant_id=%s FOR NO KEY UPDATE',(tenant,))
         eq=c.execute('SELECT * FROM equipment WHERE tenant_id=%s AND equipment_id=%s FOR UPDATE',(tenant,equipment_id)).fetchone()
         if not eq:raise KeyError('equipment')
         if eq['lifecycle_id']!=lifecycle_id:raise Conflict('lifecycle mismatch')

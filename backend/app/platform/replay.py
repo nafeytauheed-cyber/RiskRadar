@@ -18,7 +18,7 @@ def compute(events,artifacts,mode):
         f=snapshot(events,target,cutoff,freshness_cutoff=target['received_at'])
         for model_id,a in sorted(artifacts.items()):
             validate(a,model_id)
-            results.append({'event_id':target['event_id'],'model_id':model_id,'snapshot':f,'output':dict(score(a,f),quality_state=f['quality_state'],horizon_cycles=a['horizon'],mode=mode)})
+            results.append({'event_id':target['event_id'],'model_id':model_id,'snapshot':f,'output':dict(score(a,f),quality_state=f['quality_state'],horizon_cycles=a['horizon'],calibration=a['calibration']['version'],baseline=a['baseline'],policy='hysteresis-v1',mode=mode)})
     return results
 
 

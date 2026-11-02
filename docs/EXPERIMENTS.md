@@ -24,3 +24,6 @@ Full observed outputs, seeds, split manifests, CSV hashes, environment and runti
 
 ## Reliability diagram
 `python -m ml.plot_reliability` (requires matplotlib) renders `benchmarks/scientific/reliability.svg` from observed bins, shown with sample counts. Calibration is fitted independently but reliability remains uneven, especially in sparsely populated high-probability bins. Do not describe the probabilities as industrially validated.
+
+## Third remote verification (75767a4)
+[CI run 41325921043](https://github.com/nafeytauheed-cyber/RiskRadar/actions/runs/41325921043): 38 backend tests passed (including real PostgreSQL stages), 2 Chromium browser tests passed, frontend build and database recovery drill passed. The two-stage load experiment completed in 21.1493 seconds for 200 unique + 200 duplicate submissions. Later bounded-query/locking improvements require their own run. Browser tests exercise login, quality/provenance and arrival/corrected replay navigation with real API/database fixtures.

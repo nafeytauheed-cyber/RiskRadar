@@ -212,3 +212,50 @@ def test_http_ingestion_and_device_scope():
         e['equipment_id']='not-owned'
         assert client.post('/api/events',json=e,headers=headers).status_code==403
         assert client.get('/api/equipment',headers=headers).status_code==403
+
+
+def test_prepared_feature_tampering_rejected():
+    from app.platform.service import prepare_features,finish_features,prepared_inference
+    ingest('a',event());j=claim();mid,r=prepare_features(j);finish_features(j,mid,r)
+    inference=claim(phase='inference')
+    inference['prepared']['results'][0][1]['features'][0]+=1
+    with pytest.raises(ValueError,match='integrity'):prepared_inference(inference)
+
+
+def test_concurrent_admission_and_two_stage_processing():
+    import time
+    from app.platform.worker import once
+    data=[event(i) for i in range(1,21)]
+    def produce():
+        for e in data:ingest('a',e)
+    def consume():
+        deadline=time.monotonic()+20
+        while time.monotonic()<deadline:
+            once()
+            with connect() as c:
+                count=c.execute("SELECT count(*) AS n FROM jobs WHERE status='done'").fetchone()['n']
+            if count==20:return
+            time.sleep(.01)
+        raise AssertionError('concurrent processing failed to drain')
+    with ThreadPoolExecutor(3) as pool:
+        futures=[pool.submit(produce),pool.submit(consume),pool.submit(consume)]
+        for future in futures:future.result()
+    with connect() as c:
+        assert c.execute("SELECT count(*) AS n FROM predictions WHERE scope='live'").fetchone()['n']==20
+        assert c.execute('SELECT max(attempts) AS n FROM jobs').fetchone()['n']==1
+
+
+def test_late_revision_keeps_original_model_after_promotion():
+    import copy
+    from ml.artifact import load
+    from ml.causal import digest
+    from psycopg.types.json import Jsonb
+    for i in (1,2,3,4,6,7):
+        ingest('a',event(i));j=claim();original,r=prepare(j);finish(j,original,r)
+    a=copy.deepcopy(load('benchmarks/scientific/model.json'));a['intercept']+=.2;new=digest(a)
+    with connect() as c:c.execute('INSERT INTO model_versions(model_id,artifact) VALUES (%s,%s)',(new,Jsonb(a)))
+    promote('a',new)
+    ingest('a',event(5));j=claim();active,r=prepare(j);assert active==new;finish(j,active,r)
+    with connect() as c:
+        revisions=c.execute('SELECT model_id FROM predictions WHERE revision>0').fetchall()
+        assert revisions and all(x['model_id']==original for x in revisions)

@@ -7,7 +7,7 @@ from ml.causal import UNITS,SENSORS
 SCENARIOS=('healthy_load','degradation','abrupt','bias','stuck','missing','duplicates','delayed','restart','maintenance','simultaneous','unknown')
 
 
-def generate(seed=42,cycles=100,start=1760000000.):
+def generate(seed=42,cycles=100,start=1760000000.,severity=1.0):
     rng=np.random.default_rng(seed);events=[];truth=[]
     for name in SCENARIOS:
         values=np.array([65.,2.,100.,40.,1500.]);noise=np.array([1.,.1,2.,1.,15.]);stuck=None
@@ -23,6 +23,7 @@ def generate(seed=42,cycles=100,start=1760000000.):
             if name=='unknown':x+=np.sin(cycle*.77)*noise*6
             if name=='simultaneous':x[2]-=max(0,cycle-60)
             if name=='maintenance':x[:2]+=max(0,cycle-30)*np.array([.5,.08]) if cycle<70 else 0
+            x=values+(x-values)*severity
             payload={s:float(v) for s,v in zip(SENSORS,x)}
             if name=='missing' and cycle%4==0:payload['vibration']=None;quality['vibration']='missing'
             observed=start+cycle*60

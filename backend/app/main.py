@@ -1,5 +1,8 @@
 """Authenticated API; no model fitting, data generation, or mutable results cache."""
 import hashlib
+import json
+import logging
+import uuid
 import os
 import time
 from contextlib import asynccontextmanager
@@ -31,7 +34,12 @@ async def limit_body(request,call_next):
             chunks.append(chunk)
         request._body=b''.join(chunks)
     try:
-        return await call_next(request)
+        started=time.perf_counter()
+        response=await call_next(request)
+        request_id=str(uuid.uuid4())
+        response.headers['X-Request-ID']=request_id
+        logging.getLogger('riskradar.api').info(json.dumps({'event':'request','request_id':request_id,'method':request.method,'status':response.status_code,'duration_ms':round((time.perf_counter()-started)*1000,2)}))
+        return response
     except psycopg.Error:
         return JSONResponse({'detail':'database unavailable'},status_code=503)
 
@@ -76,11 +84,14 @@ def equipment(p=Depends(query_user)):
 @app.get('/api/equipment/{equipment_id}')
 def detail(equipment_id:str,p=Depends(query_user)):
     with connect() as c:
-        eq=c.execute('SELECT equipment_id,lifecycle_id FROM equipment WHERE tenant_id=%s AND equipment_id=%s',(p['tenant_id'],equipment_id)).fetchone()
+        eq=c.execute('SELECT e.equipment_id,e.lifecycle_id,s.latest_cycle,s.last_observed_at FROM equipment e LEFT JOIN processing_state s USING(tenant_id,equipment_id) WHERE e.tenant_id=%s AND e.equipment_id=%s',(p['tenant_id'],equipment_id)).fetchone()
         if not eq: raise HTTPException(404,'equipment not found')
-        rows=c.execute("SELECT p.*,f.content AS provenance,e.observed_at FROM predictions p JOIN events e USING(tenant_id,event_id) JOIN feature_snapshots f USING(tenant_id,snapshot_id) WHERE p.tenant_id=%s AND e.equipment_id=%s AND p.scope='live' ORDER BY e.observed_at DESC,p.prediction_id DESC LIMIT 100",(p['tenant_id'],equipment_id)).fetchall()
+        rows=c.execute("SELECT p.*,f.content AS provenance,e.observed_at,e.cycle FROM predictions p JOIN events e USING(tenant_id,event_id) JOIN feature_snapshots f USING(tenant_id,snapshot_id) WHERE p.tenant_id=%s AND e.equipment_id=%s AND p.scope='live' ORDER BY e.observed_at DESC,p.prediction_id DESC LIMIT 100",(p['tenant_id'],equipment_id)).fetchall()
         incidents=c.execute('SELECT * FROM incidents WHERE tenant_id=%s AND equipment_id=%s ORDER BY incident_id DESC',(p['tenant_id'],equipment_id)).fetchall()
-    return dict(eq,predictions=rows,incidents=incidents,freshness='stale' if rows and time.time()-rows[0]['observed_at'].timestamp()>86400 else ('recent' if rows else 'unknown'))
+        transitions=c.execute('SELECT t.* FROM incident_transitions t JOIN incidents i ON t.tenant_id=i.tenant_id AND t.incident_id=i.incident_id WHERE i.tenant_id=%s AND i.equipment_id=%s ORDER BY t.transition_id',(p['tenant_id'],equipment_id)).fetchall()
+        outcomes=c.execute('SELECT * FROM maintenance_outcomes WHERE tenant_id=%s AND equipment_id=%s ORDER BY outcome_id DESC',(p['tenant_id'],equipment_id)).fetchall()
+    observed=eq.pop('last_observed_at')
+    return dict(eq,predictions=rows,incidents=incidents,transitions=transitions,outcomes=outcomes,freshness='stale' if observed and time.time()-observed.timestamp()>86400 else ('recent' if observed else 'unknown'))
 
 class Transition(BaseModel):
     model_config=ConfigDict(extra='forbid')
