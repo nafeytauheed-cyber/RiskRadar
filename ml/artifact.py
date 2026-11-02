@@ -3,7 +3,8 @@ import json
 import math
 from pathlib import Path
 import numpy as np
-from .causal import FEATURES, FEATURE_VERSION, digest
+from .causal import FEATURES, digest
+from .runtimes import resolve
 
 MAX_BYTES = 1024 * 1024
 
@@ -11,7 +12,7 @@ MAX_BYTES = 1024 * 1024
 def validate(a, expected_hash=None):
     if not isinstance(a, dict) or set(a) != {'format', 'features', 'feature_version', 'mean', 'scale', 'coef', 'intercept', 'calibration', 'baseline', 'horizon', 'provenance'}:
         raise ValueError('invalid artifact schema')
-    if a['format'] != 'riskradar-logistic-v1' or a['features'] != list(FEATURES) or a['feature_version'] != FEATURE_VERSION:
+    if a['format'] != 'riskradar-logistic-v1' or a['features'] != list(FEATURES) or a['feature_version'] not in ('causal-v1', 'causal-v2'):
         raise ValueError('unsupported artifact version/features')
     for key in ('mean', 'scale', 'coef'):
         if len(a[key]) != len(FEATURES) or not all(type(v) in (int,float) and math.isfinite(v) for v in a[key]):
@@ -37,6 +38,8 @@ def load(path, expected_hash=None):
 
 def score(a, feature_snapshot):
     validate(a)
+    if feature_snapshot.get('feature_version',a['feature_version']) != a['feature_version']:
+        raise ValueError('feature/model version mismatch')
     if feature_snapshot['quality_state'] not in ('good', 'imputed'):
         return {'failure_probability': None, 'anomaly_evidence': None, 'hypotheses': [], 'priority': 'inspect_data'}
     x = (np.asarray(feature_snapshot['features'])-a['mean'])/a['scale']

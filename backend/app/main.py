@@ -6,7 +6,7 @@ import uuid
 import os
 import time
 from contextlib import asynccontextmanager
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 import psycopg
@@ -64,7 +64,7 @@ def health(): return {'status':'alive'}
 @app.get('/api/ready')
 def ready():
     with connect() as c:
-        c.execute('SELECT version FROM schema_migrations WHERE version=3').fetchone() or (_ for _ in ()).throw(HTTPException(503,'migrations required'))
+        c.execute('SELECT version FROM schema_migrations WHERE version=4').fetchone() or (_ for _ in ()).throw(HTTPException(503,'migrations required'))
     return {'status':'ready'}
 
 @app.post('/api/events',status_code=202)
@@ -111,12 +111,38 @@ def replays(p=Depends(query_user)):
     with connect() as c: return c.execute('SELECT * FROM replay_runs WHERE tenant_id=%s ORDER BY created_at DESC LIMIT 100',(p['tenant_id'],)).fetchall()
 
 @app.get('/api/replays/{run_id}')
-def replay_detail(run_id:str,p=Depends(query_user)):
+def replay_detail(run_id:str,after:int=Query(default=0,ge=0),limit:int=Query(default=100,ge=1,le=500),p=Depends(query_user)):
     with connect() as c:
         run=c.execute('SELECT * FROM replay_runs WHERE tenant_id=%s AND run_id=%s',(p['tenant_id'],run_id)).fetchone()
         if not run: raise HTTPException(404,'replay not found')
-        rows=c.execute('SELECT event_id,model_id,revision,output,snapshot_id FROM predictions WHERE tenant_id=%s AND scope=%s ORDER BY event_id,model_id',(p['tenant_id'],run_id)).fetchall()
-    return dict(run,predictions=rows)
+        rows=c.execute('SELECT prediction_id,event_id,model_id,revision,output,snapshot_id FROM predictions WHERE tenant_id=%s AND scope=%s AND prediction_id>%s ORDER BY prediction_id LIMIT %s',(p['tenant_id'],run_id,after,limit+1)).fetchall()
+    more=len(rows)>limit
+    rows=rows[:limit]
+    return dict(run,predictions=rows,next_after=rows[-1]['prediction_id'] if more else None)
+
+
+class ReplayRequest(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    models:list[str]=Field(min_length=1,max_length=8)
+    mode:str=Field(pattern='^(arrival|corrected)$')
+
+
+@app.post('/api/replays',status_code=201)
+def create_replay(body:ReplayRequest,p=Depends(query_user)):
+    from .platform.replay import create
+    if p['role'] not in ('operator','admin'):raise HTTPException(403,'operator required')
+    try:return {'run_id':create(p['tenant_id'],body.models,body.mode,p['key_hash'][:12])}
+    except ValueError as exc:raise HTTPException(422,str(exc))
+
+
+@app.post('/api/replays/{run_id}/{action}')
+def control_replay(run_id:str,action:str,p=Depends(query_user)):
+    from .platform.replay import control
+    if p['role'] not in ('operator','admin'):raise HTTPException(403,'operator required')
+    try:return {'status':control(p['tenant_id'],run_id,action,p['key_hash'][:12])}
+    except KeyError:raise HTTPException(404,'replay not found')
+    except ValueError as exc:raise HTTPException(422,str(exc))
+
 
 @app.get('/api/metrics')
 def metrics(p=Depends(query_user)):

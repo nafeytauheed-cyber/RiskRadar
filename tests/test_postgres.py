@@ -275,3 +275,102 @@ def test_reopening_requires_two_new_high_observations():
     with connect() as c:assert c.execute('SELECT count(*) AS n FROM incidents').fetchone()['n']==1
     high(4)
     with connect() as c:assert c.execute('SELECT count(*) AS n FROM incidents').fetchone()['n']==2
+
+
+@pytest.mark.parametrize('mode',['arrival','corrected'])
+def test_paged_replay_matches_reference_and_pins_membership(mode):
+    from app.platform import replay
+    from app.platform.service import event_dict
+    for i in (1,2,3,4,6,7,8,9,10,5):ingest('a',event(i))
+    with connect() as c:
+        rows=c.execute("SELECT * FROM events WHERE tenant_id='a' ORDER BY id").fetchall()
+        model=c.execute("SELECT m.* FROM model_versions m JOIN tenants t ON t.active_model=m.model_id WHERE t.tenant_id='a'").fetchone()
+    mid=model['model_id']
+    expected=replay.compute([event_dict(r) for r in rows],{mid:model['artifact']},mode)
+    rid=replay.create('a',[mid],mode)
+    assert replay.create('a',[mid],mode)==rid
+    claimed=replay.claim_page('a',rid)
+    last,results=replay.prepare_page(claimed,2)
+    assert last==2 and len(results)==2
+    assert replay.finish_page(claimed,last,results)
+    assert not replay.finish_page(claimed,last,results)
+    ingest('a',event(11))  # arrives after pinning; never enters this replay
+    while replay.step('a',rid,3):pass
+    with connect() as c:
+        progress=c.execute('SELECT * FROM replay_runs WHERE run_id=%s',(rid,)).fetchone()
+        actual=c.execute('SELECT p.event_id,p.model_id,p.output,f.content FROM predictions p JOIN feature_snapshots f USING(tenant_id,snapshot_id) WHERE p.scope=%s',(rid,)).fetchall()
+        assert progress['status']=='complete' and progress['processed']==progress['total']==10
+        assert c.execute('SELECT count(*) AS n FROM incidents').fetchone()['n']==0
+        assert c.execute('SELECT count(*) AS n FROM outbox').fetchone()['n']==0
+    wanted={(r['event_id'],r['model_id']):(r['snapshot'],r['output']) for r in expected}
+    assert {(r['event_id'],r['model_id']):(r['content'],r['output']) for r in actual}==wanted
+
+
+def test_replay_cancel_resume_stale_fence():
+    from app.platform import replay
+    ingest('a',event())
+    with connect() as c:mid=c.execute("SELECT active_model FROM tenants WHERE tenant_id='a'").fetchone()['active_model']
+    rid=replay.create('a',[mid],'arrival')
+    old=replay.claim_page('a',rid);last,results=replay.prepare_page(old,1)
+    assert replay.claim_page('a',rid) is None
+    assert replay.control('a',rid,'cancel')=='cancelled'
+    with pytest.raises(LostLease):replay.finish_page(old,last,results)
+    assert not replay.step('a',rid)
+    with pytest.raises(KeyError):replay.control('b',rid,'resume')
+    replay.control('a',rid,'resume');old=replay.claim_page('a',rid)
+    with connect() as c:c.execute("UPDATE replay_runs SET lease_until=now()-interval '1 second' WHERE run_id=%s",(rid,))
+    new=replay.claim_page('a',rid)
+    with pytest.raises(LostLease):replay.finish_page(old,last,results)
+    last,results=replay.prepare_page(new,1);replay.finish_page(new,last,results)
+    assert not replay.step('a',rid)
+
+
+def test_replay_runtime_drift_fails_closed(monkeypatch):
+    from app.platform import replay
+    ingest('a',event())
+    with connect() as c:mid=c.execute("SELECT active_model FROM tenants WHERE tenant_id='a'").fetchone()['active_model']
+    rid=replay.create('a',[mid],'arrival')
+    monkeypatch.setattr(replay,'descriptors',lambda _: {})
+    with pytest.raises(ValueError,match='fingerprint'):replay.step('a',rid)
+    with connect() as c:
+        assert c.execute('SELECT status FROM replay_runs WHERE run_id=%s',(rid,)).fetchone()['status']=='failed'
+        assert c.execute('SELECT count(*) AS n FROM predictions WHERE scope=%s',(rid,)).fetchone()['n']==0
+    monkeypatch.undo();replay.control('a',rid,'resume');assert replay.step('a',rid)
+
+
+def test_replay_api_pagination_and_authorization():
+    from app.platform import replay
+    for i in range(1,5):ingest('a',event(i))
+    with connect() as c:
+        mid=c.execute("SELECT active_model FROM tenants WHERE tenant_id='a'").fetchone()['active_model']
+        c.execute("INSERT INTO api_keys(key_hash,tenant_id,role) VALUES (%s,'a','reader')",(hashlib.sha256(b'reader-token').hexdigest(),))
+    admin={'Authorization':'Bearer '+'a'*40}
+    with TestClient(app) as client:
+        rid=client.post('/api/replays',json={'models':[mid],'mode':'arrival'},headers=admin).json()['run_id']
+        assert client.get('/api/replays/'+rid,headers={'Authorization':'Bearer '+'b'*40}).status_code==404
+        assert client.post('/api/replays/'+rid+'/cancel',json={},headers={'Authorization':'Bearer reader-token'}).status_code==403
+        while replay.step('a',rid,1):pass
+        page=client.get('/api/replays/'+rid+'?limit=2',headers=admin).json()
+        assert len(page['predictions'])==2 and page['next_after'] is not None
+        next_page=client.get('/api/replays/'+rid+f"?limit=2&after={page['next_after']}",headers=admin).json()
+        assert len(next_page['predictions'])==2 and next_page['next_after'] is None
+        assert not {r['prediction_id'] for r in page['predictions']} & {r['prediction_id'] for r in next_page['predictions']}
+        assert client.get('/api/replays/'+rid+'?limit=501',headers=admin).status_code==422
+
+
+def test_historical_model_replay_and_promotion_guard():
+    from ml.artifact import load
+    from ml.causal import digest
+    from psycopg.types.json import Jsonb
+    from app.platform import replay
+    a=load('benchmarks/scientific/model.json');a['feature_version']='causal-v1';old=digest(a)
+    with connect() as c:
+        c.execute('INSERT INTO model_versions(model_id,artifact) VALUES (%s,%s)',(old,Jsonb(a)))
+        current=c.execute("SELECT active_model FROM tenants WHERE tenant_id='a'").fetchone()['active_model']
+    with pytest.raises(ValueError,match='historical-only'):promote('a',old)
+    for i in range(1,7):ingest('a',event(i))
+    rid=replay.run('a',[old,current],'corrected',page_size=2)
+    with connect() as c:
+        rows=c.execute('SELECT f.content FROM predictions p JOIN feature_snapshots f USING(tenant_id,snapshot_id) WHERE p.scope=%s',(rid,)).fetchall()
+    assert len(rows)==12
+    assert {r['content']['feature_version'] for r in rows}=={'causal-v1','causal-v2'}

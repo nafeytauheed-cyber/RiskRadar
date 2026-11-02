@@ -30,6 +30,7 @@ jobs:
       - run: python -m pytest -q --junitxml=benchmarks/junit.xml
       - run: python -m ml.evaluate --output /tmp/reproduction
       - run: python -m benchmarks.load --events 200 --output benchmarks/postgres-load.json
+      - run: python -m benchmarks.replay_pages
       - run: python -m benchmarks.concurrency
       - run: python -m benchmarks.recovery --container "${{ job.services.postgres.id }}" --output benchmarks/recovery.json
       - uses: actions/setup-node@v4

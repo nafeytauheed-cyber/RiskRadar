@@ -22,6 +22,9 @@ def promote(tenant,model_id):
         if not row: raise ValueError('unknown model')
         from ml.artifact import validate
         validate(row['artifact'],model_id)
+        from ml.runtimes import resolve
+        if not resolve(row['artifact']['feature_version']).promotable:
+            raise ValueError('historical-only feature runtime cannot be promoted')
         previous=c.execute('SELECT active_model FROM tenants WHERE tenant_id=%s FOR UPDATE',(tenant,)).fetchone()
         if not previous: raise ValueError('unknown tenant')
         c.execute('UPDATE tenants SET active_model=%s WHERE tenant_id=%s',(model_id,tenant))

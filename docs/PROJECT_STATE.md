@@ -22,3 +22,6 @@ Independent chronological/industrial validation is blocked by the supplied data.
 
 ## Exact next action
 The implemented checkpoint is verified and ready for review in the draft PR; it is not merged or deployed. To continue development, select a deferred acceptance criterion from ROADMAP. Highest scientific priority: obtain a suitably licensed independent lifecycle/outcome dataset and evaluate a later cohort without tuning on the current final test. Highest engineering priority: retained feature-version runtimes and bounded/paginated replay. Reproduce the existing checks using RESUME_WORK before new changes.
+
+## Follow-up in progress
+Migration 004 adds immutable pinned replay inputs, durable progress/leases, cancellation/resume and paginated results. Runtime registry retains causal-v1/v2 and dispatches historical replay by artifact version. New PostgreSQL parity/fencing/isolation tests and golden historical feature tests are being verified. Do not claim this follow-up verified until its CI completes.

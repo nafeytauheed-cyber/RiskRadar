@@ -7,6 +7,7 @@ import hashlib
 from datetime import datetime, timezone
 from psycopg.types.json import Jsonb
 from ml.causal import digest, snapshot
+from ml.runtimes import resolve
 from ml.artifact import score, validate
 from .db import connect
 
@@ -87,10 +88,11 @@ def prepare_features(job):
     byid={r['event_id']:r for r in [row]+targets}
     results=[]
     for target in byid.values():
-        f=snapshot([event_dict(r) for r in events],event_dict(target),row['received_at'].timestamp())
         pinned=target.get('original_model_id',model['model_id'])
         artifact=validate(artifacts[pinned],pinned)
-        output=dict({'quality_state':f['quality_state'],'horizon_cycles':artifact['horizon'],'calibration':artifact['calibration']['version'],'baseline':artifact['baseline'],'policy':'hysteresis-v1','model_id':pinned,'revision_reason':'original' if target['event_id']==row['event_id'] else 'late_observation'})
+        runtime=resolve(artifact['feature_version'])
+        f=runtime.snapshot([event_dict(r) for r in events],event_dict(target),row['received_at'].timestamp())
+        output=dict({'quality_state':f['quality_state'],'horizon_cycles':artifact['horizon'],'calibration':artifact['calibration']['version'],'baseline':artifact['baseline'],'policy':'hysteresis-v1','runtime_sha256':runtime.fingerprint,'model_id':pinned,'revision_reason':'original' if target['event_id']==row['event_id'] else 'late_observation'})
         results.append((target,f,output))
     return model['model_id'],results
 

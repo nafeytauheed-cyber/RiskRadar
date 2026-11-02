@@ -34,6 +34,10 @@ services:
   inference-worker:
     <<: *app
     command: ['python', '-m', 'app.platform.worker', '--phase', 'inference']
+  replay-worker:
+    <<: *app
+    profiles: [replay]
+    command: ['python', '-m', 'app.platform.replay_worker']
   admin:
     <<: *app
     profiles: [tools]
