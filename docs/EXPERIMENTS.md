@@ -27,3 +27,20 @@ Full observed outputs, seeds, split manifests, CSV hashes, environment and runti
 
 ## Third remote verification (75767a4)
 [CI run 41325921043](https://github.com/nafeytauheed-cyber/RiskRadar/actions/runs/41325921043): 38 backend tests passed (including real PostgreSQL stages), 2 Chromium browser tests passed, frontend build and database recovery drill passed. The two-stage load experiment completed in 21.1493 seconds for 200 unique + 200 duplicate submissions. Later bounded-query/locking improvements require their own run. Browser tests exercise login, quality/provenance and arrival/corrected replay navigation with real API/database fixtures.
+
+## Fourth remote verification (d94dda8)
+[CI run 41380709807](https://github.com/nafeytauheed-cyber/RiskRadar/actions/runs/41380709807): 41 backend tests passed; frontend build passed. All three database experiments passed. One browser test failed because a broad selector matched the new investigation-notes panel rather than provenance; the follow-up commit scopes that selector and retains both provenance assertions.
+
+- `benchmarks/postgres-fourth.json`: 200 unique + 200 duplicate submissions, exactly 200 original predictions, 20.5354 s total, ingestion-pair p95 23.5297 ms. Runner: 4 vCPUs, AMD EPYC 7763, about 16 GiB reported host memory; Python process peak RSS 73,524 KiB. These are runner measurements, not an 8 GB laptop certification.
+- `benchmarks/concurrency-fourth.json`: four equipment, four producer threads, two consumers, seeded shuffled five-cycle blocks, 200 unique + 200 duplicate submissions; 200 originals and 211 append-only late revisions, zero dead jobs, maximum inference attempts 1, 10.3371 s elapsed. Revision count depends on actual arrival/interleaving; input seed and contract assertions are reproducible, wall-clock scheduling is not deterministic.
+- `benchmarks/recovery-fourth.json`: database stop rejected ingestion, restart recovered its pending job, repeat ingestion remained a duplicate, and backup restoration preserved table counts/model hashes. Single-node drill only.
+
+## Final implemented checkpoint (1d63d2c)
+[CI run 41381105831](https://github.com/nafeytauheed-cyber/RiskRadar/actions/runs/41381105831): **42 backend tests passed in 7.74 s; 2 Chromium browser tests passed in 3.8 s; production frontend build and all database experiments passed.** This includes the incident-reopening fix and corrected provenance-panel selector.
+
+Exact machine-readable evidence:
+- `postgres-final.json`: 200 unique + 200 duplicate submissions => 200 predictions; 20.5683 s total; ingestion-pair p95 22.1772 ms; process RSS 73,692 KiB.
+- `concurrency-final.json`: four equipment/four producers/two consumers, seeded shuffled arrivals; 200 originals plus 211 appended late revisions; zero dead jobs, maximum inference attempts 1; 10.4689 s.
+- `recovery-final.json`: unavailable database rejected ingestion, restart recovered a pending job, duplicates remained idempotent, and restored database counts/model hashes matched.
+
+Hardware/configuration is recorded with the sequential report: 4 visible vCPUs, AMD EPYC 7763 host model, ~16 GiB reported host memory, PostgreSQL 16, Python 3.12.15. These short experiments do not certify an 8 GB laptop, sustained capacity, replicas or partition tolerance. Revisions reflect actual asynchronous arrival interleavings; determinism is asserted for replay of a pinned persisted manifest, not thread scheduling.

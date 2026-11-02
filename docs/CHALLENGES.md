@@ -1,23 +1,31 @@
-# Challenges
+# Challenges and decisions
 
-## Real PostgreSQL runtime
-- Evidence: no PostgreSQL or Docker installed; apt installation failed on setgroups/setuid in this restricted container.
-- Impact: local locking/transaction tests skip; local claims must exclude them.
-- Options: real service in GitHub CI, developer Docker Compose, or provisioned disposable DB.
-- Decision: add PostgreSQL 16 GitHub service and strict integration tests; inspect results before claiming verification. No paid resource requested.
-- Uncertainty: remote workflow execution availability.
+## Local PostgreSQL unavailable — verification moved to CI
+- Evidence: this container has neither PostgreSQL nor Docker; package installation failed because server user switching is unsupported.
+- Impact: local PostgreSQL tests skip. They are not counted as local passes.
+- Decision: execute the integration suite, load workloads, process-death tests and database stop/restart/restore drill against PostgreSQL 16 in GitHub Actions.
+- Status: remote verification at 1d63d2c passed all 42 backend tests, both browser tests and all three database experiments. No paid infrastructure or public deployment was created.
 
-## Scientific evidence scope
-- Evidence: repository is synthetic; historical units share their initial date and faults mirror diagnostic rules; no license supplied.
-- Impact: this cannot establish chronological generalization or real industrial accuracy.
-- Decision: separate equipment partitions, selection/calibration/final test, cluster bootstrap, no causal fault-label claims; defer industrial validation until a suitable outcome dataset exists.
-- Input eventually needed: permission and provenance/license for an independently collected lifecycle/outcome dataset, plus operational false-alert costs.
+## Scientific validity remains bounded by data
+- Evidence: supplied CSVs are synthetic, historical units begin together, and old diagnostic rules mirror the original generator. No independent licensed outcome dataset is supplied.
+- Impact: no claim of real industrial accuracy, causality or independent chronological generalization.
+- Decision: causal-v2 features, equipment-disjoint training/selection/calibration/test, explicit censoring/intervention labels, uncertainty and calibration diagnostics. A different seeded simulator supplies held-out mechanisms, severities and later timestamps as stress evidence only.
+- Unresolved: independent later lifecycle cohorts and operational false-alert costs. Input needed before industrial validation: a suitably licensed dataset with operating cycles, failures, maintenance interventions and observable follow-up.
 
-## Scope and continuity
-- Decisions: serve logistic JSON first; keep complex models offline; no LLM/ForceModel dependency; preserve original components as disconnected legacy reference. Feature/inference phases share one worker process with a pure feature boundary, not two separately queued worker services yet.
-- Remaining: roadmap explicitly tracks unfinished requirements; do not infer completeness from the number of files or tables.
+## Model comparison and safe serving
+- Evidence: held-out synthetic PR-AUC is 0.709 for logistic and 0.828 for gradient boosting; calibration bins remain uneven.
+- Decision: keep the predeclared inspectable JSON logistic serving baseline; do not tune/promote a challenger using the already-inspected final test. Complex models remain offline comparators until a safe runtime and fresh selection/test protocol exist.
+- Tradeoff: simpler serving, lower observed test performance than the boosting comparator. This is documented rather than hidden.
 
-## Verification progress
-The first GitHub CI run succeeded with PostgreSQL integration tests and a real load/duplicate experiment. Local PostgreSQL remains unavailable. Later changes require their own CI verification. Feature age semantics were tightened and explicitly versioned causal-v2 rather than silently changing a published feature version. A separate restart/backup/restore drill has been added and awaits execution.
+## Durable stages and locking
+- Feature and inference workers have separate durable phases (migration 003), with the earliest equipment job blocking overtaking.
+- Tenant admission uses a no-key-update lock to serialize queue admission without conflicting with foreign-key key-share locks during worker commits.
+- Late revisions retain the original target model even after promotion; original observations use the current promoted model.
+- Resolution resets hysteresis so reopening requires two new high observations. All these contracts have dedicated real-PostgreSQL tests.
 
-The initial shared-process feature/inference decision has been superseded by migration 003: separate workers now use a durable intermediate payload and preserve per-equipment ordering across phases. Tests and benchmarks were extended to cover the production stage handoff rather than only the synchronous adapter.
+## Browser regression
+- d94dda8 passed 41 backend tests and all three database experiments, but one browser test selected the newly added notes panel instead of the provenance panel.
+- The selector is now scoped to the provenance details element; the assertion itself remains unchanged. CI run 41381105831 confirms the fix; both browser tests pass.
+
+## Remaining scope
+See ROADMAP for explicit scientific blockers and deferred scale/operations work. Current results do not establish sustained-load capacity, replica failover, network-partition safety or production readiness. Replay currently loads its pinned input set in memory. Future incompatible feature schemas require retained executable runtimes; do not promote them into an existing installation without migration support.
