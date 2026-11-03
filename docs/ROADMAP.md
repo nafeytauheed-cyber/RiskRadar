@@ -18,8 +18,8 @@ Verification is commit-specific; see PROJECT_STATE and EXPERIMENTS for which rev
 
 ## Deferred engineering acceptance (not claimed complete)
 - Broad sustained multi-equipment/high-contention load, network partitions and replica failover; existing experiments are small single-instance workloads.
-- Scale replay with pagination/progress/cancellation rather than all-input in-memory processing.
+- Measure larger replay workloads and pinning-transaction duration; scoring and query pages are now bounded, but pinning scans all identities in one snapshot.
 - Operational dead-letter retry/review UI, audited equipment/key provisioning workflow, external secret manager, RLS and production TLS/rate limits.
-- Feature-version migration framework retaining executable historical runtimes across incompatible schemas; do not promote incompatible feature artifacts into an existing installation.
+- General incompatible sensor-schema migrations. Retained causal-v1/v2 runtimes and replay fingerprints now exist; new versions still require explicit reviewed code and golden fixtures.
 - Larger accessibility/operator study; browser walkthrough covers the core connect/evidence/replay path, not all usability cases.
 - LLM summaries and ForceModel/LossLearning remain deliberately optional and unimplemented.

@@ -11,3 +11,12 @@ Backup: `docker compose exec -T db pg_dump -U riskradar -d riskradar -Fc > riskr
 Outbox: set a trusted NOTIFICATION_URL and run `python -m app.platform.outbox` explicitly. Receiver must honor tenant-qualified Idempotency-Key. A timeout after remote success is ambiguous; duplicates are possible, at most five send attempts per row under normal configuration. Dead jobs/outbox remain queryable. Manual retries need an audited administrative workflow (pending); do not silently delete them.
 
 Update: the CI recovery drill now executes a real PostgreSQL stop/restart and backup/restore into a separate database. See benchmarks/recovery-second.json and its linked run for measured evidence. Production Compose uses separate feature-worker and inference-worker processes. Prepared snapshots and model IDs survive process death between phases. Each phase retries at most five times; dead-letter review remains manual. API logs request UUID, method, status and duration, never credentials or telemetry bodies.
+
+## Replay operations
+Apply migration 004 before starting the API. Start the optional consumer with `docker compose --profile replay up -d replay-worker`, or `PYTHONPATH=.:backend python -m app.platform.replay_worker`.
+
+An operator/admin can POST `/api/replays` with `{"models":["MODEL_ID"],"mode":"arrival"}` (or `corrected`), then POST `/api/replays/RUN_ID/cancel` or `/resume`. GET `/api/replays/RUN_ID?limit=100&after=0` returns a `next_after` cursor; use it for the next page. UI refresh, progress, cancel/resume and next-page controls are available. The API creates work; the separate consumer processes it.
+
+CLI: `PYTHONPATH=.:backend python -m app.platform.replay --tenant TENANT --models MODEL_ID --mode arrival --page-size 100`. Resume after a failure with `--tenant TENANT --run-id RUN_ID --action resume`; this CLI also processes remaining pages. Cancel with `--action cancel`. Failed runtime-fingerprint checks require restoring the pinned runtime, not bypassing the check. Cancellation preserves partial results and does not delete evidence.
+
+Disposable benchmark: `PYTHONPATH=.:backend RISKRADAR_TEST_DATABASE=1 python -m benchmarks.replay_pages` (DATABASE_URL must identify a disposable migrated database). It measures 500 events, pages of 25, cancellation/resume, traced Python memory and live-effect isolation. It also drains fixture telemetry jobs afterward.

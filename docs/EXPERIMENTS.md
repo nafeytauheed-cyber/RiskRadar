@@ -44,3 +44,10 @@ Exact machine-readable evidence:
 - `recovery-final.json`: unavailable database rejected ingestion, restart recovered a pending job, duplicates remained idempotent, and restored database counts/model hashes matched.
 
 Hardware/configuration is recorded with the sequential report: 4 visible vCPUs, AMD EPYC 7763 host model, ~16 GiB reported host memory, PostgreSQL 16, Python 3.12.15. These short experiments do not certify an 8 GB laptop, sustained capacity, replicas or partition tolerance. Revisions reflect actual asynchronous arrival interleavings; determinism is asserted for replay of a pinned persisted manifest, not thread scheduling.
+
+## Bounded replay checkpoint (f66e7be)
+[CI 41387576979](https://github.com/nafeytauheed-cyber/RiskRadar/actions/runs/41387576979) passed 50 backend tests in 10.20 s, including 25 PostgreSQL integration cases, and three Chromium browser tests in 4.7 s. Frontend build, offline evaluation, sequential/concurrent processing and database stop/restart/restore passed.
+
+`PYTHONPATH=.:backend RISKRADAR_TEST_DATABASE=1 python -m benchmarks.replay_pages` (disposable DATABASE_URL) produced `benchmarks/replay-pages-verified.json`: 500 events, one model, 20 pages of 25, maximum 25 results in a page, 2.916362891 s, peak traced Python memory 1,022,493 bytes. Cancel/resume and unchanged live incidents/outbox were asserted. Same runner as sequential report: 4 CPUs, AMD EPYC 7763, 16,366,644 KiB host memory; PostgreSQL 16/Python 3.12.15. Tracemalloc excludes native/database memory; input pinning remains one full identity scan in a repeatable-read transaction. No large-scale or laptop certification is implied.
+
+Saved replay-checkpoint reports preserve the new sequential, concurrency and recovery measurements alongside earlier evidence. Local runtime golden tests pass exactly. Retraining differed from the saved artifact only in coefficient/intercept/calibration rounding (below 1e-12); hashes remain exact and the original saved artifact is unchanged.

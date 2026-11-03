@@ -9,3 +9,5 @@
 7. `update_incident` and `outbox.py`: database effects are atomic; external delivery cannot be made exactly once by a local transaction. The recipient must deduplicate.
 8. [`platform/replay.py`](../backend/app/platform/replay.py): same pinned inputs can score different artifacts while leaving live incidents alone. Compare hashes in the UI.
 9. [`tests/test_postgres.py`](../tests/test_postgres.py): actual PostgreSQL proves behavior mocks cannot prove. A skipped test is not a passed guarantee.
+
+Trace a resumable replay through `backend/app/platform/replay.py`: create pins membership, claim_page acquires a fenced lease, prepare_page gathers bounded context and scores outside the transaction, finish_page atomically commits results/progress. `tests/test_postgres.py` compares pages against the pure reference and exercises cancellation/lease loss. `ml/runtimes.py`, `ml/features/` and `tests/test_runtime_versions.py` demonstrate explicit historical behavior rather than trusting a version label alone.

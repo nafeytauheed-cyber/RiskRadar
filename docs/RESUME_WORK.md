@@ -10,3 +10,5 @@
 8. Record actual commands/results, update continuity docs, and push another coherent checkpoint to the same draft PR. No merge, public deployment or paid resources are authorized.
 
 The local scratch git history may contain equivalent connector-created commits with different SHAs. Compare trees and use a fresh checkout of the remote branch if necessary; never force-push to reconcile those local aliases.
+
+Replay follow-up: migration 004 and causal-v1/v2 runtime registry are implemented. Run `benchmarks.replay_pages` alongside the existing experiments. Verify the latest CI before claiming PostgreSQL/browser success. Larger input-pinning and contention measurements, independent data, and administrative review workflows remain next candidates.

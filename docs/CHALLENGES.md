@@ -29,3 +29,8 @@
 
 ## Remaining scope
 See ROADMAP for explicit scientific blockers and deferred scale/operations work. Current results do not establish sustained-load capacity, replica failover, network-partition safety or production readiness. Replay currently loads its pinned input set in memory. Future incompatible feature schemas require retained executable runtimes; do not promote them into an existing installation without migration support.
+
+## Historical runtimes and bounded replay
+Problem/evidence: the prior runner loaded all events/results and committed only at the end; feature-version metadata alone could not execute older semantics. Impact: memory growth, lost progress on crash and historically incorrect feature dispatch. Decision: immutable input membership, fenced page commits and explicit retained runtime modules. Options rejected: adding a broker without measured need, or importing arbitrary model-provided code. Uncertainty: long pinning snapshots, sustained workload behavior and dependency-level reproducibility remain unmeasured. No user input is required for this engineering slice.
+
+Local retraining reproduced numeric parameters within 1e-12, but not byte-for-byte: coefficient/calibration differences were at floating-point rounding scale. Artifact hashes intentionally remain exact; reproducible predictions use the saved immutable artifact, rather than treating numerically close retraining as identical provenance.

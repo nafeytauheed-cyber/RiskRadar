@@ -1,0 +1,22 @@
+{
+  "seed_base": 7300,
+  "equipment": 4,
+  "unique_events": 200,
+  "duplicate_events": 200,
+  "producer_threads": 4,
+  "consumer_threads": 2,
+  "delay_model": "shuffle each consecutive five-cycle block",
+  "original_predictions": 200,
+  "late_revisions": 211,
+  "dead_jobs": 0,
+  "max_inference_attempts": 1,
+  "duration_seconds": 10.901401254000007,
+  "ingestion_pair_p95_ms": 95.4487700499925,
+  "limitations": [
+    "short bounded contention test",
+    "direct service calls, not HTTP latency",
+    "not a throughput capacity or soak claim"
+  ],
+  "source_run": "https://github.com/nafeytauheed-cyber/RiskRadar/actions/runs/41387576979",
+  "commit": "f66e7bedc9d2fbab71ca34f852eba089ecd122cd"
+}
