@@ -1,0 +1,18 @@
+{
+  "events": 500,
+  "models": 1,
+  "page_size": 25,
+  "pages": 20,
+  "max_page_results": 25,
+  "peak_traced_python_bytes": 1022493,
+  "duration_seconds": 2.9163628909999915,
+  "cancel_resume_verified": true,
+  "live_incidents_outbox_unchanged": true,
+  "limitations": [
+    "short single-instance workload",
+    "tracemalloc excludes native/database memory",
+    "pinning still scans input identities in one database snapshot"
+  ],
+  "source_run": "https://github.com/nafeytauheed-cyber/RiskRadar/actions/runs/41387576979",
+  "commit": "f66e7bedc9d2fbab71ca34f852eba089ecd122cd"
+}

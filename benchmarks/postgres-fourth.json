@@ -1,0 +1,25 @@
+{
+  "events": 200,
+  "duplicate_submissions": 200,
+  "processed_jobs_all_tenants": 200,
+  "prediction_count": 200,
+  "ingest_seconds": 4.326971950000001,
+  "processing_seconds": 16.208392762000017,
+  "total_seconds": 20.535364712000018,
+  "ingestion_pair_p50_ms": 19.771288500010087,
+  "ingestion_pair_p95_ms": 23.52970029999565,
+  "peak_process_rss_kib": 73524,
+  "python": "3.12.15",
+  "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.43",
+  "cpu_count": 4,
+  "cpu_model": "AMD EPYC 7763 64-Core Processor",
+  "host_memory_kib": 16366644,
+  "workload": "one equipment, sequential synchronous producer/worker, duplicate every event; finish replay after every commit",
+  "limitations": [
+    "not a capacity claim",
+    "no network partition experiment",
+    "no sustained soak or multi-host scaling"
+  ],
+  "source_run": "https://github.com/nafeytauheed-cyber/RiskRadar/actions/runs/41380709807",
+  "commit": "d94dda8a3d84e531bc02c2f80da4dc8e14fd891d"
+}

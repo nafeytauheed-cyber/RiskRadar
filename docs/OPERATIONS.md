@@ -1,0 +1,22 @@
+# Operations
+
+Liveness `/api/health` does not require the database. Readiness `/api/ready` requires connection and migration version. `/api/metrics` requires a query credential and exposes tenant queue/outbox counts. Worker emits JSON event messages, excludes payloads/secrets, handles TERM/INT between jobs; leases recover interrupted jobs. It is one sequential worker by default. More consumers may be started, but equipment serialization remains enforced.
+
+Secrets are environment variables, never committed. API keys are hashed in the database, role-scoped, and device keys are bound to equipment. Hashing high-entropy keys is not a substitute for hashing user passwords; passwords are not supported. Rotate a key by inserting its hash and then deleting the old hash. Production TLS, external secret manager, per-key rate limits and RLS remain deployment hardening work; don't expose this draft publicly.
+
+Migration: `PYTHONPATH=.:backend python -m app.platform.admin migrate`. Explicit migration advisory lock; API never mutates schema at startup. Register model JSON, validate its content hash, then promote with the admin CLI. Rollback is promotion of the previous model ID in audit_events. Historical predictions remain attached to their original artifact.
+
+Backup: `docker compose exec -T db pg_dump -U riskradar -d riskradar -Fc > riskradar.dump`. Store encrypted backups outside the host. Restore into a fresh database with `pg_restore --no-owner --exit-on-error -U riskradar -d RESTORE_DB riskradar.dump`. Never overwrite the live database to test restore. Compare events, prediction/model hashes, migration version and pending jobs after restoration, run readiness and replay, and only then switch services. A disposable PostgreSQL restore drill was executed in CI; see benchmarks/recovery-final.json.
+
+Outbox: set a trusted NOTIFICATION_URL and run `python -m app.platform.outbox` explicitly. Receiver must honor tenant-qualified Idempotency-Key. A timeout after remote success is ambiguous; duplicates are possible, at most five send attempts per row under normal configuration. Dead jobs/outbox remain queryable. Manual retries need an audited administrative workflow (pending); do not silently delete them.
+
+Update: the CI recovery drill now executes a real PostgreSQL stop/restart and backup/restore into a separate database. See benchmarks/recovery-second.json and its linked run for measured evidence. Production Compose uses separate feature-worker and inference-worker processes. Prepared snapshots and model IDs survive process death between phases. Each phase retries at most five times; dead-letter review remains manual. API logs request UUID, method, status and duration, never credentials or telemetry bodies.
+
+## Replay operations
+Apply migration 004 before starting the API. Start the optional consumer with `docker compose --profile replay up -d replay-worker`, or `PYTHONPATH=.:backend python -m app.platform.replay_worker`.
+
+An operator/admin can POST `/api/replays` with `{"models":["MODEL_ID"],"mode":"arrival"}` (or `corrected`), then POST `/api/replays/RUN_ID/cancel` or `/resume`. GET `/api/replays/RUN_ID?limit=100&after=0` returns a `next_after` cursor; use it for the next page. UI refresh, progress, cancel/resume and next-page controls are available. The API creates work; the separate consumer processes it.
+
+CLI: `PYTHONPATH=.:backend python -m app.platform.replay --tenant TENANT --models MODEL_ID --mode arrival --page-size 100`. Resume after a failure with `--tenant TENANT --run-id RUN_ID --action resume`; this CLI also processes remaining pages. Cancel with `--action cancel`. Failed runtime-fingerprint checks require restoring the pinned runtime, not bypassing the check. Cancellation preserves partial results and does not delete evidence.
+
+Disposable benchmark: `PYTHONPATH=.:backend RISKRADAR_TEST_DATABASE=1 python -m benchmarks.replay_pages` (DATABASE_URL must identify a disposable migrated database). It measures 500 events, pages of 25, cancellation/resume, traced Python memory and live-effect isolation. It also drains fixture telemetry jobs afterward.

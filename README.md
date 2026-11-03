@@ -1,159 +1,51 @@
-# RiskRadar — AI Safety Investigator (PS 04)
+# RiskRadar — replayable failure investigations (v2 draft)
 
-RiskRadar analyzes industrial equipment telemetry, maintenance logs, and
-historical failure records to answer four questions an investigator would
-ask after an incident — before it happens:
+Authenticated telemetry ingestion, causal feature snapshots, durable prediction processing, append-only revisions, incident investigation and isolated model replay. **Research platform in development, not a validated industrial safety system.** The committed model is evaluated only on this repository's synthetic histories. See [current state](docs/PROJECT_STATE.md), [audit](docs/AUDIT.md), [experiments](docs/EXPERIMENTS.md) and [unfinished work](docs/ROADMAP.md).
 
-> **What is going wrong, why is it happening, how serious is the risk, and
-> what should we do?**
+## Local setup
 
-It does this through explicit **failure-chain reasoning**:
+Python 3.12, Node 20 and Docker Compose. No cloud resources needed. The DB/API/two-worker memory limits total 2.75 GiB; frontend runs separately. These are configured limits, not a measured 8 GB laptop benchmark.
 
-```
-Weak Signals  →  Emerging Pattern  →  Likely Root Cause  →  Predicted Failure
-   →  Safety Risk Score  →  Explainable Evidence  →  Recommended Intervention
-```
-
-No IoT, no hardware. All data is simulated and shipped with the repo, so the
-whole system runs end-to-end on a laptop with no external services.
-
----
-
-## What it does
-
-- **Data pipeline**: cleans and engineers rolling-window features (mean, std,
-  trend slope) from raw multi-sensor equipment telemetry.
-- **Anomaly detection**: an Isolation Forest trained on healthy historical
-  telemetry flags multivariate deviations; per-sensor z-scores give
-  human-readable evidence.
-- **Failure-risk prediction**: a Gradient Boosting classifier trained on a
-  historical run-to-failure fleet (labeled by remaining-useful-life) predicts
-  the probability that a currently-monitored unit fails within 30 cycles.
-- **Historical failure similarity**: a nearest-neighbor search over failure
-  "signatures" surfaces the most similar past incidents and how they were
-  resolved.
-- **Root-cause reasoning engine**: rule-based logic combines sensor
-  deviation direction + magnitude + trend + similarity-search agreement into
-  ranked root-cause hypotheses (bearing wear, lubrication breakdown, seal
-  leak, blockage, electrical overload, misalignment) — each with the actual
-  evidence chain behind it.
-- **Composite risk score**: blends failure probability, anomaly severity,
-  root-cause confidence, and equipment criticality into a 0–100 score with a
-  Low/Medium/High/Critical severity band.
-- **Recommended actions**: a knowledge base maps root cause + severity to
-  prioritized immediate / short-term / monitoring actions.
-- **Automated report generation**: a narrative "investigation report" per
-  equipment unit, downloadable as PDF straight from the browser.
-
-## Architecture
-
-```
-RiskRadar/
-├── backend/                 FastAPI + ML pipeline (Python)
-│   └── app/
-│       ├── data_gen.py      synthetic dataset generator
-│       ├── pipeline/        preprocessing, anomaly, prediction, similarity,
-│       │                    root-cause engine, risk scoring, explainability,
-│       │                    recommendations, timeline, report generation
-│       ├── data/            generated CSVs (created on first run)
-│       └── main.py          REST API
-└── frontend/                React + Vite + Tailwind dashboard
-    └── src/
-        ├── components/      Dashboard, EquipmentDetail, ReportView, ...
-        └── api.js           talks to the backend REST API
-```
-
-The pipeline trains at API startup (well under a second on this dataset size)
-and results are cached in memory — no database needed.
-
-## Prerequisites
-
-- Python 3.10+
-- Node.js 18+
-
-## One-click launch (Windows)
-
-Double-click **`start.bat`** in the project root. It will (on first run) create
-the backend virtual environment, install both backend and frontend
-dependencies, then open two windows — one running the API, one running the
-dashboard — and launch your browser to `http://localhost:5173` automatically.
-Close those two windows to stop RiskRadar. Subsequent runs skip the install
-steps and start in a few seconds.
-
-## Setup & Run (Windows / PowerShell)
-
-**1. Backend**
-
-```powershell
-cd backend
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python -m app.data_gen        # generates the sample dataset (first time only)
-uvicorn app.main:app --reload --port 8000
-```
-
-The API is now live at `http://127.0.0.1:8000` (docs at `/docs`). Dataset
-generation also runs automatically on first API startup if the CSVs are
-missing, so `python -m app.data_gen` is optional.
-
-**2. Frontend** (in a second terminal)
-
-```powershell
+```bash
+export POSTGRES_PASSWORD="$(python -c 'import secrets; print(secrets.token_hex(24))')"
+export RISKRADAR_API_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+docker compose up -d db
+docker compose run --rm admin migrate
+docker compose run --rm admin bootstrap --tenant demo --equipment degradation --lifecycle original
+docker compose run --rm admin register benchmarks/scientific/model.json
+# Copy the returned content hash into MODEL_ID:
+export MODEL_ID=fc1b76d35765c55006eb007dc264fc4d9eeeb9d592e8a0589a1153dfb9e3ea26
+docker compose run --rm admin promote --tenant demo --model "$MODEL_ID"
+docker compose up -d api feature-worker inference-worker
 cd frontend
-npm install
-npm run dev
+npm ci
+npm run dev -- --host 127.0.0.1
 ```
 
-Open `http://localhost:5173`. The dev server proxies `/api/*` to the backend
-on port 8000, so no CORS configuration is needed.
+Open localhost:5173 and enter the API key (held only in page memory). Provision devices separately through the database/admin extension; never embed admin secrets in frontend bundles. CORS permits only the configured local origin. API and database ports bind loopback. Notification delivery is intentionally not started by Compose.
 
-## Setup & Run (macOS / Linux / Git Bash)
+## Train, test and replay
 
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate      # or: source venv/Scripts/activate on Git Bash/Windows
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+python -m pip install -r requirements-dev.txt
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m ml.evaluate --output experiments/local
+python -m pytest -q
+# For real PostgreSQL tests use an EMPTY, DISPOSABLE database:
+export DATABASE_URL='postgresql://USER:PASSWORD@localhost:5432/riskradar_test'
+export RISKRADAR_TEST_DATABASE=1
+PYTHONPATH=.:backend python -m pytest -q tests/test_postgres.py
+# Against your demo database (unset RISKRADAR_TEST_DATABASE afterwards):
+PYTHONPATH=.:backend python -m app.platform.replay --tenant demo --models "$MODEL_ID" --mode arrival
+PYTHONPATH=.:backend python -m app.platform.replay --tenant demo --models "$MODEL_ID" --mode corrected
+python -m simulator.generate --seed 42 --output experiments/scenario
 ```
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+Telemetry contract and ordering rules: [DATA_CONTRACTS](docs/DATA_CONTRACTS.md). Hidden simulator outcomes are written separately and never consumed by inference. Simulator output uses epoch seconds and includes a simulated arrival timestamp; the HTTP API requires ISO observed_at and rejects caller-supplied received_at. Use the demo feeder below for HTTP ingestion.
 
-## Using the dashboard
+## Demo walkthrough
 
-- **Fleet Overview** (`/`): overall system risk, KPI counts, and every piece
-  of equipment ranked by risk with a severity filter.
-- **Equipment Investigation** (`/equipment/:id`): individual risk score,
-  the failure-chain visualization, sensor trend chart, explainable evidence,
-  event timeline, similar historical incidents, and recommended actions.
-- **Generate Investigation Report**: from an equipment page, produces a
-  formatted narrative report — click "Download / Print PDF" to save it.
+Run `PYTHONPATH=.:backend python -m simulator.feed --url http://localhost:8000` with RISKRADAR_API_KEY set. It sends 20 recent degradation observations to the provisioned demo equipment, then an identical duplicate. Refresh the UI, inspect quality/warmup, probability, evidence IDs, input cutoffs and model hash. Use the two replay commands above and compare results in the UI. No real failure prediction is established by this demo.
 
-## Regenerating / resetting the sample data
+## Operations and continuity
 
-```bash
-cd backend
-python -m app.data_gen
-```
-
-This overwrites the CSVs in `backend/app/data/` with a fresh random (but
-seeded/reproducible) fleet. Restart the backend afterward (or call
-`POST /api/refresh`) to retrain the pipeline on the new data.
-
-## Notes on the ML design
-
-- The **historical fleet** (`sensor_readings_history.csv` +
-  `failure_history.csv`) contains completed run-to-failure lifecycles with
-  known outcomes — used purely for training the anomaly/failure models and
-  building the similarity library.
-- The **current fleet** (`sensor_readings.csv` + `equipment_master.csv`) is
-  what the app actually investigates: ongoing, mid-lifecycle units, most of
-  which are silently developing (but have not reached) one of the fault
-  patterns. The app has no access to ground-truth labels for this fleet — it
-  has to (re)discover risk from raw telemetry, the same way it would with
-  real plant data.
+See [operations](docs/OPERATIONS.md), [architecture](docs/ARCHITECTURE.md), [learning guide](docs/LEARNING_GUIDE.md), and [resume instructions](docs/RESUME_WORK.md). Legacy pipeline/components remain disconnected for reference; do not run the old pipeline as a validated service. No paid resource, public deployment or merge is part of this draft.

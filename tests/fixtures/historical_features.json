@@ -1,0 +1,251 @@
+{
+  "events": [
+    {
+      "event_id": "golden:0",
+      "equipment_id": "golden",
+      "lifecycle_id": "life",
+      "session_id": "boot",
+      "cycle": 0,
+      "sequence": 0,
+      "observed_at": 1700000000.0,
+      "received_at": 1700000000.0,
+      "values": {
+        "temperature": 1.0,
+        "vibration": 1.0,
+        "pressure": 1.0,
+        "current": 1.0,
+        "rpm": 1.0
+      },
+      "quality": {
+        "temperature": "good",
+        "vibration": "good",
+        "pressure": "good",
+        "current": "good",
+        "rpm": "good"
+      }
+    },
+    {
+      "event_id": "golden:1",
+      "equipment_id": "golden",
+      "lifecycle_id": "life",
+      "session_id": "boot",
+      "cycle": 1,
+      "sequence": 1,
+      "observed_at": 1700021600.0,
+      "received_at": 1700021600.0,
+      "values": {
+        "temperature": 2.0,
+        "vibration": 2.0,
+        "pressure": 2.0,
+        "current": 2.0,
+        "rpm": 2.0
+      },
+      "quality": {
+        "temperature": "good",
+        "vibration": "good",
+        "pressure": "good",
+        "current": "good",
+        "rpm": "good"
+      }
+    },
+    {
+      "event_id": "golden:2",
+      "equipment_id": "golden",
+      "lifecycle_id": "life",
+      "session_id": "boot",
+      "cycle": 2,
+      "sequence": 2,
+      "observed_at": 1700043200.0,
+      "received_at": 1700043200.0,
+      "values": {
+        "temperature": 3.0,
+        "vibration": 3.0,
+        "pressure": 3.0,
+        "current": 3.0,
+        "rpm": 3.0
+      },
+      "quality": {
+        "temperature": "good",
+        "vibration": "good",
+        "pressure": "good",
+        "current": "good",
+        "rpm": "good"
+      }
+    },
+    {
+      "event_id": "golden:3",
+      "equipment_id": "golden",
+      "lifecycle_id": "life",
+      "session_id": "boot",
+      "cycle": 3,
+      "sequence": 3,
+      "observed_at": 1700064800.0,
+      "received_at": 1700064800.0,
+      "values": {
+        "temperature": 4.0,
+        "vibration": 4.0,
+        "pressure": 4.0,
+        "current": 4.0,
+        "rpm": 4.0
+      },
+      "quality": {
+        "temperature": "good",
+        "vibration": "good",
+        "pressure": "good",
+        "current": "good",
+        "rpm": "good"
+      }
+    },
+    {
+      "event_id": "golden:4",
+      "equipment_id": "golden",
+      "lifecycle_id": "life",
+      "session_id": "boot",
+      "cycle": 4,
+      "sequence": 4,
+      "observed_at": 1700086400.0,
+      "received_at": 1700086400.0,
+      "values": {
+        "temperature": 5.0,
+        "vibration": 5.0,
+        "pressure": 5.0,
+        "current": 5.0,
+        "rpm": 5.0
+      },
+      "quality": {
+        "temperature": "good",
+        "vibration": "good",
+        "pressure": "good",
+        "current": "good",
+        "rpm": "good"
+      }
+    },
+    {
+      "event_id": "golden:5",
+      "equipment_id": "golden",
+      "lifecycle_id": "life",
+      "session_id": "boot",
+      "cycle": 5,
+      "sequence": 5,
+      "observed_at": 1700108000.0,
+      "received_at": 1700108000.0,
+      "values": {
+        "temperature": 6.0,
+        "vibration": 6.0,
+        "pressure": 6.0,
+        "current": 6.0,
+        "rpm": 6.0
+      },
+      "quality": {
+        "temperature": "good",
+        "vibration": "good",
+        "pressure": "good",
+        "current": "good",
+        "rpm": "good"
+      }
+    },
+    {
+      "event_id": "golden:6",
+      "equipment_id": "golden",
+      "lifecycle_id": "life",
+      "session_id": "boot",
+      "cycle": 6,
+      "sequence": 6,
+      "observed_at": 1700129600.0,
+      "received_at": 1700129600.0,
+      "values": {
+        "temperature": 7.0,
+        "vibration": 7.0,
+        "pressure": 7.0,
+        "current": 7.0,
+        "rpm": 7.0
+      },
+      "quality": {
+        "temperature": "good",
+        "vibration": "good",
+        "pressure": "good",
+        "current": "good",
+        "rpm": "good"
+      }
+    }
+  ],
+  "snapshots": {
+    "causal-v1": {
+      "feature_version": "causal-v1",
+      "features": [
+        4.0,
+        2.160246899469287,
+        1.0,
+        4.0,
+        2.160246899469287,
+        1.0,
+        4.0,
+        2.160246899469287,
+        1.0,
+        4.0,
+        2.160246899469287,
+        1.0,
+        4.0,
+        2.160246899469287,
+        1.0
+      ],
+      "quality_state": "good",
+      "input_refs": [
+        "golden:0",
+        "golden:1",
+        "golden:2",
+        "golden:3",
+        "golden:4",
+        "golden:5",
+        "golden:6"
+      ],
+      "observation_cutoff": 1700129600.0,
+      "arrival_cutoff": 1700129600.0,
+      "feature_policy": {
+        "window": 10,
+        "min_samples": 5,
+        "max_fill_cycles": 2,
+        "max_age_seconds": 86400
+      },
+      "sha256": "990645b292a68b6ba8987bec0657f69effe54c59502cf89f18b5fdb139632274"
+    },
+    "causal-v2": {
+      "feature_version": "causal-v2",
+      "features": [
+        5.0,
+        1.5811388300841898,
+        1.0,
+        5.0,
+        1.5811388300841898,
+        1.0,
+        5.0,
+        1.5811388300841898,
+        1.0,
+        5.0,
+        1.5811388300841898,
+        1.0,
+        5.0,
+        1.5811388300841898,
+        1.0
+      ],
+      "quality_state": "good",
+      "input_refs": [
+        "golden:2",
+        "golden:3",
+        "golden:4",
+        "golden:5",
+        "golden:6"
+      ],
+      "observation_cutoff": 1700129600.0,
+      "arrival_cutoff": 1700129600.0,
+      "freshness_cutoff": 1700129600.0,
+      "feature_policy": {
+        "window": 10,
+        "min_samples": 5,
+        "max_fill_cycles": 2,
+        "max_age_seconds": 86400
+      },
+      "sha256": "0248d54aa86ce9f200cdc15173723992faf65ffade4d71f4e2611471875f8f41"
+    }
+  }
+}
